@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --card-bg:#e8eaeb; --header-fill:#32454e; --border:#acbdc5;
+    --accent:#1f6c92; --text:#131515; --muted:#747b7e; --icon:#4b86a4;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
+  body { background:#ffffff; width:980px; height:560px; position:relative; }
+  svg { position:absolute; inset:0; width:980px; height:560px; }
+  svg line, svg rect, svg path { stroke:var(--header-fill); stroke-width:2.5; fill:none; }
+  svg .cu { stroke:var(--accent); }
+  svg .gnd { stroke:var(--muted); stroke-width:2; }
+  .pad { position:absolute; font-size:17px; font-weight:700; color:var(--text); }
+  .lab { position:absolute; font-size:16px; font-weight:600; color:var(--accent); }
+  .mut { position:absolute; font-size:14px; color:var(--muted); }
+  .box {
+    position:absolute; background:var(--card-bg); border:2px solid var(--border);
+    border-radius:10px; padding:12px 16px;
+  }
+  .box .t { font-size:19px; font-weight:700; color:var(--text); }
+  .box .f { font-size:16px; color:var(--accent); font-weight:700; margin-top:6px; }
+  .box .d { font-size:14px; color:var(--muted); margin-top:4px; line-height:1.4; }
+</style>
+</head>
+<body>
+  <!-- MCU pads -->
+  <div class="pad" style="left:60px; top:70px;">XTAL1 (pin 17)</div>
+  <div class="pad" style="left:60px; top:400px;">XTAL2 (pin 16)</div>
+
+  <svg>
+    <!-- wires from MCU pads to crystal -->
+    <line x1="190" y1="78" x2="330" y2="78" class="cu"/>
+    <line x1="190" y1="410" x2="330" y2="410" class="cu"/>
+    <!-- crystal body -->
+    <line x1="330" y1="40" x2="330" y2="450" class="cu"/>
+    <line x1="350" y1="40" x2="350" y2="450" class="cu"/>
+    <!-- crystal plates (capacitor symbol style) -->
+    <!-- caps to ground -->
+    <line x1="430" y1="78" x2="530" y2="78" class="cu"/>
+    <line x1="430" y1="410" x2="530" y2="410" class="cu"/>
+    <!-- C1 cap plates -->
+    <line x1="530" y1="58" x2="530" y2="98"/>
+    <line x1="544" y1="58" x2="544" y2="98"/>
+    <!-- C2 cap plates -->
+    <line x1="530" y1="390" x2="530" y2="430"/>
+    <line x1="544" y1="390" x2="544" y2="430"/>
+    <!-- ground drop + rail -->
+    <line x1="537" y1="98" x2="537" y2="180" class="gnd"/>
+    <line x1="537" y1="308" x2="537" y2="390" class="gnd"/>
+    <line x1="537" y1="180" x2="537" y2="308" class="gnd"/>
+    <!-- stray capacitance dashed path around crystal -->
+    <path d="M 340 160 C 400 200, 400 290, 340 330" stroke-dasharray="6,5" class="gnd"/>
+    <line x1="340" y1="160" x2="340" y2="160"/>
+  </svg>
+
+  <div class="lab" style="left:236px; top:52px;">XTAL1 net</div>
+  <div class="lab" style="left:236px; top:384px;">XTAL2 net</div>
+
+  <div class="box" style="left:384px; top:212px; width:118px; background:#ffffff; border-color:var(--accent); text-align:center;">
+    <div class="t">Y1</div>
+    <div class="f">16MHz</div>
+    <div class="d">parallel<br>resonant</div>
+  </div>
+
+  <div class="lab" style="left:522px; top:26px;">C1 = 22pF</div>
+  <div class="lab" style="left:522px; top:436px;">C2 = 22pF</div>
+  <div class="mut" style="left:552px; top:236px;">GND</div>
+  <div class="mut" style="left:396px; top:238px;">C</div>
+  <div class="mut" style="left:420px; top:242px;">C</div>
+
+  <div class="mut" style="left:352px; top:164px;">C<sub>stray</sub> &asymp; 3&ndash;5pF<br>(pads + pins + routing)</div>
+
+  <!-- formula card -->
+  <div class="box" style="left:640px; top:64px; width:308px;">
+    <div class="t">Load capacitance seen by the crystal</div>
+    <div class="f">C<sub>L</sub> = (C1 &middot; C2) / (C1 + C2) + C<sub>stray</sub></div>
+    <div class="d">With C1 = C2 = 22pF and C<sub>stray</sub> &asymp; 4pF:<br>
+    C<sub>L</sub> = 11pF + 4pF = <b>15pF</b> &rarr; order a crystal specced C<sub>L</sub> = 15pF (12.5&ndash;18pF works)</div>
+  </div>
+  <div class="box" style="left:640px; top:250px; width:308px;">
+    <div class="t">Why both caps to GND?</div>
+    <div class="d">The crystal is a lossy series R-L-C in parallel with C<sub>0</sub>.
+    In the Pierce oscillator (inside the MCU), C1 and C2 form the feedback
+    divider with the inverting amplifier. Equal caps give symmetric
+    drive; the series pair appears to the crystal as ONE capacitor of
+    half the value &mdash; that is the load it must "see" to oscillate
+    at exactly 16.000MHz.</div>
+  </div>
+</body>
+</html>

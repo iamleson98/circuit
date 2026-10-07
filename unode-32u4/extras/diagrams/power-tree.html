@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --card-bg:#e8eaeb; --header-fill:#32454e; --border:#acbdc5;
+    --accent:#1f6c92; --text:#131515; --muted:#747b7e; --icon:#4b86a4;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
+  body { background:#ffffff; width:1000px; height:700px; position:relative; }
+  .n {
+    position:absolute; background:var(--card-bg); border:2px solid var(--border);
+    border-radius:10px; padding:10px 12px; text-align:center;
+  }
+  .n .t { font-size:19px; font-weight:700; color:var(--text); }
+  .n .d { font-size:14px; color:var(--muted); margin-top:3px; line-height:1.3; }
+  .root {
+    background:var(--header-fill); border-color:var(--header-fill);
+  }
+  .root .t { color:#ffffff; }
+  .root .d { color:#d8e2e7; }
+  .cap { position:absolute; font-size:14px; font-weight:600; color:var(--accent);
+         background:#fff; padding:1px 5px; border-radius:4px; }
+  .rail { position:absolute; font-size:15px; font-weight:800; color:var(--accent); }
+  svg { position:absolute; inset:0; width:1000px; height:700px; }
+  svg line { stroke:var(--icon); stroke-width:2.5; }
+  svg .thick { stroke:var(--accent); stroke-width:3.5; }
+</style>
+</head>
+<body>
+  <svg>
+    <!-- VBUS -> F1 -->
+    <line class="thick" x1="120" y1="60" x2="228" y2="60"/>
+    <!-- F1 -> V5 rail node -->
+    <line class="thick" x1="368" y1="60" x2="452" y2="60"/>
+    <!-- V5 rail horizontal distribution -->
+    <line class="thick" x1="500" y1="60" x2="940" y2="60"/>
+    <!-- branches down -->
+    <line x1="500" y1="60" x2="500" y2="128"/>
+    <line x1="628" y1="60" x2="628" y2="128"/>
+    <line x1="756" y1="60" x2="756" y2="128"/>
+    <line x1="884" y1="60" x2="884" y2="128"/>
+    <!-- bulk caps hang off rail between F1 and first branch -->
+    <line x1="420" y1="60" x2="420" y2="118"/>
+    <!-- FB branch: VCC-AVCC chain lower row -->
+    <line x1="500" y1="212" x2="500" y2="290"/>
+    <line x1="500" y1="380" x2="500" y2="430"/>
+    <line x1="628" y1="212" x2="628" y2="290"/>
+    <line x1="628" y1="380" x2="628" y2="430"/>
+    <!-- UCAP sub-branch -->
+    <line x1="756" y1="212" x2="756" y2="290"/>
+    <line x1="756" y1="380" x2="756" y2="430"/>
+    <!-- loads bottom -->
+    <line x1="500" y1="516" x2="500" y2="566"/>
+    <line x1="628" y1="516" x2="628" y2="566"/>
+    <line x1="756" y1="516" x2="756" y2="566"/>
+    <line x1="884" y1="212" x2="884" y2="430"/>
+  </svg>
+
+  <div class="n root" style="left:12px; top:34px; width:108px;">
+    <div class="t">VBUS</div><div class="d">5V from USB</div>
+  </div>
+  <div class="n" style="left:228px; top:30px; width:140px;">
+    <div class="t">F1 &middot; PTC</div><div class="d">500mA hold</div>
+  </div>
+  <div class="rail" style="left:462px; top:36px;">+5V&nbsp;rail&nbsp;(net.V5)</div>
+
+  <div class="n" style="left:344px; top:118px; width:152px;">
+    <div class="t">C1 + C2</div><div class="d">2 &times; 10&micro;F</div>
+  </div>
+
+  <div class="n" style="left:424px; top:128px; width:152px;">
+    <div class="t">U1.VCC1</div><div class="d">pin 14</div>
+  </div>
+  <div class="n" style="left:552px; top:128px; width:152px;">
+    <div class="t">U1.VCC2</div><div class="d">pin 24</div>
+  </div>
+  <div class="n" style="left:680px; top:128px; width:152px;">
+    <div class="t">U1.VCC3</div><div class="d">pin 34</div>
+  </div>
+  <div class="n" style="left:808px; top:128px; width:152px;">
+    <div class="t">U1.UVCC</div><div class="d">pin 2 &middot; USB pad supply</div>
+  </div>
+
+  <div class="n" style="left:424px; top:290px; width:152px;">
+    <div class="t">FB1 &middot; ferrite</div><div class="d">600&Omega; @ 100MHz</div>
+  </div>
+  <div class="n" style="left:424px; top:430px; width:152px;">
+    <div class="t">U1.AVCC</div><div class="d">pin 44 &middot; analog supply</div>
+  </div>
+  <div class="n" style="left:552px; top:290px; width:152px;">
+    <div class="t">C3 &middot; 100nF</div><div class="d">at pin 14</div>
+  </div>
+  <div class="n" style="left:552px; top:430px; width:152px;">
+    <div class="t">C4 &middot; 100nF</div><div class="d">at pin 24</div>
+  </div>
+  <div class="n" style="left:680px; top:290px; width:152px;">
+    <div class="t">U1.UCAP</div><div class="d">pin 6 &middot; internal 3.3V reg out</div>
+  </div>
+  <div class="n" style="left:680px; top:430px; width:152px;">
+    <div class="t">C7 &middot; 1&micro;F</div><div class="d">regulator output</div>
+  </div>
+  <div class="n" style="left:808px; top:290px; width:152px;">
+    <div class="t">C5 &middot; 100nF</div><div class="d">at pin 34</div>
+  </div>
+  <div class="n" style="left:808px; top:430px; width:152px;">
+    <div class="t">C8 &middot; 100nF</div><div class="d">at pin 2 (UVCC)</div>
+  </div>
+
+  <div class="n" style="left:424px; top:566px; width:152px;">
+    <div class="t">C6 &middot; 100nF</div><div class="d">at AVCC pin</div>
+  </div>
+  <div class="n" style="left:552px; top:566px; width:152px;">
+    <div class="t">AREF + C9</div><div class="d">pin 42 &middot; 100nF</div>
+  </div>
+  <div class="n" style="left:680px; top:566px; width:152px;">
+    <div class="t">GND</div><div class="d">4 pins + UGND</div>
+  </div>
+
+  <div class="cap" style="left:322px; top:88px;">inrush buffer</div>
+  <div class="cap" style="left:508px; top:240px;">filtered analog</div>
+  <div class="cap" style="left:764px; top:240px;">1&micro;F per datasheet &sect;2.2.12</div>
+</body>
+</html>

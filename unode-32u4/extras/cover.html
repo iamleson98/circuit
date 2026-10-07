@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c-bg: #f4f5f5;
+    --c-accent: #1f6c92;
+    --c-text: #131515;
+    --c-muted: #747b7e;
+    --c-mid: #32454e;
+    --c-surface: #e8eaeb;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
+  html, body { margin:0; padding:0; background:var(--c-bg); }
+  .cover {
+    position:relative; width:794px; height:1123px; background:var(--c-bg);
+    border:none; outline:none; box-shadow:none; overflow:hidden;
+  }
+  /* ── Layer 1: background grid (clipped) ── */
+  .layer1 {
+    position:absolute; inset:0; overflow:hidden; z-index:1;
+    background-image:
+      linear-gradient(to right, rgba(31,108,146,0.05) 0.5px, transparent 0.5px),
+      linear-gradient(to bottom, rgba(31,108,146,0.05) 0.5px, transparent 0.5px);
+    background-size: 66px 66px;
+  }
+  /* ── Layer 2: structure ── */
+  .layer2 { position:absolute; inset:0; z-index:2; }
+  .anchor-line {
+    position:absolute; left:95px; top:112px; width:8px; height:899px;
+    background:var(--c-accent);
+  }
+  /* ── Layer 3: content ── */
+  .layer3 { position:absolute; inset:0; z-index:3; }
+  .kicker {
+    position:absolute; left:145px; top:168px;
+    font-size:16pt; font-weight:600; letter-spacing:3pt;
+    color:var(--c-text); opacity:0.6; text-transform:uppercase;
+  }
+  .hero {
+    position:absolute; left:145px; top:300px; width:520px;
+    font-size:44pt; font-weight:900; line-height:1.15;
+    color:var(--c-mid); letter-spacing:-0.5pt;
+  }
+    .summary {
+    position:absolute; left:145px; top:640px; width:476px;
+    font-size:13.5pt; font-weight:400; line-height:1.6;
+    color:var(--c-text); opacity:0.85;
+  }
+  .meta {
+    position:absolute; left:145px; top:872px;
+    font-size:13pt; font-weight:600; color:var(--c-text); line-height:1.8;
+  }
+  .meta .muted { color:var(--c-muted); font-weight:400; font-size:12pt; }
+  .footer {
+    position:absolute; left:145px; top:1010px;
+    font-size:11pt; font-weight:600; letter-spacing:2pt;
+    color:var(--c-muted); text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="layer1"></div>
+  <div class="layer2">
+    <div class="anchor-line"></div>
+  </div>
+  <div class="layer3">
+    <div class="kicker">Design &amp; Build Tutorial</div>
+    <div class="hero">uNode32U4<br>Bare-Chip USB<br>Dev Board</div>
+    <div class="summary">
+      A complete, manufacturable 2-layer board built around one bare ATmega32U4
+      and thirty-five primary components &mdash; power integrity, crystal clock,
+      reset &amp; bootloader, USB routing, and PCB layout craft &mdash; designed
+      end-to-end in tscircuit, where circuits are React components.
+    </div>
+    <div class="meta">
+      Designed with tscircuit &middot; React for electronics<br>
+      <span class="muted">Verified netlist &middot; 35 components &middot; 105 routed traces &middot; October 2026</span>
+    </div>
+    <div class="footer">ATmega32U4 &middot; TQFP-44 &middot; USB 2.0 &middot; Leonardo-Compatible</div>
+  </div>
+</div>
+</body>
+</html>
