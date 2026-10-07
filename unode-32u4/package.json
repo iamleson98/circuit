@@ -9,7 +9,8 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.build.json && node fix-imports.mjs",
     "verify": "node verify.mjs",
-    "render": "node render.mjs"
+    "render": "node render.mjs",
+    "proof": "node proof.mjs"
   },
   "keywords": [
     "tscircuit",

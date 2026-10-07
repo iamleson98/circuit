@@ -93,4 +93,4 @@ const pads = json.filter((el) => el.type === "pcb_smtpad")
 console.log("smtpads total:", pads.length)
 console.log("═".repeat(60))
 
-if (fatal.length) process.exit(1)
+if (fatal.length || drc.length) process.exit(1)
