@@ -32,8 +32,8 @@ import { UsbMicroB } from "./lib/usb-micro-b"
 
 export default () => (
   <board
-    width="64mm"
-    height="42mm"
+    width="72mm"
+    height="50mm"
     name="uNode32U4"
     // Layers: 2 (top + bottom). tscircuit's default; matches JLCPCB's
     // cheapest 2-layer offering.
@@ -45,19 +45,23 @@ export default () => (
         damp reflections and limit inrush current through the chip's USB pads.
         The USB shell tabs are soldered to GND for shielding. */}
 
-    <UsbMicroB name="J1" pcbX={-29.8} pcbY={0} schX={-16} schY={0} />
+    <UsbMicroB name="J1" pcbX={-29.3} pcbY={0} schX={-16} schY={0} />
+    {/* F1 sits BELOW the D+/D− pair on purpose: its V5 exit then runs
+        under the USB lines to the bulk caps instead of crossing them. */}
     <fuse
       name="F1"
       footprint="1206"
       currentRating="500mA"
       voltageRating="15V"
-      pcbX={-22}
-      pcbY={2}
+      pcbX={-24}
+      pcbY={-2.2}
       schX={-10}
       schY={3}
     />
-    <resistor name="R1" resistance="22ohm" footprint="0603" pcbX={-14} pcbY={2.5} schX={-10} schY={0.5} />
-    <resistor name="R2" resistance="22ohm" footprint="0603" pcbX={-14} pcbY={0} schX={-10} schY={-1} />
+    {/* R1/R2 sit ~3mm from the MCU pads — datasheet §2.2.8/9 wants the
+        series resistors “as close as possible” to the chip side. */}
+    <resistor name="R1" resistance="22ohm" footprint="0603" pcbX={-12.5} pcbY={1.75} schX={-10} schY={0.5} />
+    <resistor name="R2" resistance="22ohm" footprint="0603" pcbX={-12.5} pcbY={3.35} schX={-10} schY={-1} />
 
     <trace from=".J1 > .VBUS" to=".F1 > .left" width="0.5mm" />
     <trace from=".F1 > .right" to="net.V5" width="0.5mm" />
@@ -90,16 +94,52 @@ export default () => (
         • AREF (pin 42) gets 100nF (only matters if you use external AREF,
           but it costs nothing)
         • 2×10µF bulk at the power entry absorb USB inrush */}
-    <capacitor name="C1" capacitance="10uF" footprint="0805" pcbX={-19.5} pcbY={-3.5} schX={-10} schY={-4} />
-    <capacitor name="C2" capacitance="10uF" footprint="0805" pcbX={-15} pcbY={-3.5} schX={-10} schY={-5.5} />
-    <capacitor name="C3" capacitance="100nF" footprint="0603" pcbX={-10} pcbY={-5} schX={-4} schY={-6} />
-    <capacitor name="C4" capacitance="100nF" footprint="0603" pcbX={9} pcbY={-0.5} schX={4} schY={-6} />
-    <capacitor name="C5" capacitance="100nF" footprint="0603" pcbX={4.5} pcbY={7.5} schX={4} schY={6} />
-    <capacitor name="C6" capacitance="100nF" footprint="0603" pcbX={-4} pcbY={7.5} schX={-4} schY={6} />
-    <capacitor name="C7" capacitance="1uF" footprint="0603" pcbX={-9.5} pcbY={-1.5} schX={-6} schY={-2.5} />
-    <capacitor name="C8" capacitance="100nF" footprint="0603" pcbX={-10} pcbY={4.5} schX={-6} schY={4.5} />
-    <capacitor name="C9" capacitance="100nF" footprint="0603" pcbX={0.5} pcbY={7.5} schX={0} schY={6.5} />
-    <inductor name="FB1" inductance="1uH" footprint="0603" pcbX={-8} pcbY={7.5} schX={-6} schY={7} />
+    {/* Placement discipline: one decoupler ~2-3mm from the pin it serves,
+        pin facing its pad. Each cap's pin1 is its V5/AVCC side.
+        C3→VCC1 (bottom-left), C4→VCC2 (right), C5→VCC3 (top),
+        C8→UVCC (top-left), C7 is the UCAP 1µF, C6 rides the ferrite-bead
+        AVCC island, C9 bypasses AREF. */}
+    {/* Bulk caps stand vertical — pin1 (V5) up, pin2 (GND) down — so the
+        VBUS→V5 arrival from above and the GND return from the connector
+        never have to cross each other at the power entry. */}
+    <capacitor name="C1" capacitance="10uF" footprint="0805" pcbX={-19.5} pcbY={-3.5} pcbRotation={270} schX={-10} schY={-4} />
+    <capacitor name="C2" capacitance="10uF" footprint="0805" pcbX={-15} pcbY={-4.5} pcbRotation={270} schX={-10} schY={-5.5} />
+    <capacitor name="C3" capacitance="100nF" footprint="0603" pcbX={-8.5} pcbY={-10.5} pcbRotation={90} schX={-4} schY={-6} />
+    {/* C4 tucks under the chip's bottom-right corner, vertical, pin1 (V5)
+        on top: the VCC2/GND2 escapes drop straight down to it and never
+        have to cross the right-edge signal corridor. */}
+    <capacitor name="C4" capacitance="100nF" footprint="0603" pcbX={7.6} pcbY={-7.6} pcbRotation={270} schX={4} schY={-6} />
+    {/* C5 sits right of the other top caps: its GND pin then exits right
+        toward J3.GND (the only GND member on that side of the board) while
+        V5 arrives from the left — opposite shoulders, no squeeze. */}
+    <capacitor name="C5" capacitance="100nF" footprint="0603" pcbX={5} pcbY={9} pcbRotation={90} schX={4} schY={6} />
+    {/* C6 is vertical with pin1 (AVCC) UP: the ferrite bead feeds it from
+        the side, and GND4's escape reaches the bottom GND pin without
+        wrapping past the AVCC pin. */}
+    <capacitor name="C6" capacitance="100nF" footprint="0603" pcbX={-7} pcbY={9.4} pcbRotation={270} schX={-4} schY={6} />
+    {/* C7 is rotated 180° so pin1 faces the MCU — the UCAP trace exits
+        straight out of the pad, no detour around the cap body. */}
+    <capacitor name="C7" capacitance="1uF" footprint="0603" pcbX={-13.5} pcbY={-2} pcbRotation={180} schX={-6} schY={-2.5} />
+    <capacitor name="C8" capacitance="100nF" footprint="0603" pcbX={-11.5} pcbY={6} schX={-6} schY={4.5} />
+    <capacitor name="C9" capacitance="100nF" footprint="0603" pcbX={-5} pcbY={9} pcbRotation={90} schX={0} schY={6.5} />
+    <inductor name="FB1" inductance="1uH" footprint="0603" pcbX={-9.8} pcbY={8.5} schX={-6} schY={7} />
+
+    {/* VCC2↔VCC3 hand-routed up the body's x=2.6 lane — the autorouter's
+        version cuts diagonally through the ring and grazes SCL/MOSI. */}
+    <trace
+      from=".U1 > .VCC2"
+      to=".U1 > .VCC3"
+      pcbPath={[{ x: 4.6, y: -3.2 }, { x: 4.6, y: 5.64 }, ".U1 > .VCC3"]}
+    />
+
+    {/* GND3↔GND4 hand-routed UNDER the top pad row (y=4.5 lane, below
+        every pad tip at y=4.9): the autorouter sends this edge straight
+        through the pad row, grazing AREF's pad. */}
+    <trace
+      from=".U1 > .GND3"
+      to=".U1 > .GND4"
+      pcbPath={[{ x: 3.2, y: 4.5 }, { x: -3.2, y: 4.5 }, ".U1 > .GND4"]}
+    />
 
     {/* MCU power hookup — every pin explicit, because that's the lesson */}
     <trace from=".U1 > .VBUS" to="net.V5" />
@@ -108,7 +148,7 @@ export default () => (
     <trace from=".U1 > .VCC2" to="net.V5" />
     <trace from=".U1 > .VCC3" to="net.V5" />
     <trace from=".U1 > .UGND" to="net.GND" />
-    <trace from=".U1 > .GND1" to="net.GND" />
+    <trace from=".U1 > .GND1" to="net.GND" width="0.2mm" />
     <trace from=".U1 > .GND2" to="net.GND" />
     <trace from=".U1 > .GND3" to="net.GND" />
     <trace from=".U1 > .GND4" to="net.GND" />
@@ -118,14 +158,26 @@ export default () => (
     <trace from=".C1 > .pin2" to="net.GND" />
     <trace from=".C2 > .pin1" to="net.V5" />
     <trace from=".C2 > .pin2" to="net.GND" />
-    <trace from=".C3 > .pin1" to="net.V5" />
-    <trace from=".C3 > .pin2" to="net.GND" />
+    <trace
+      from=".U1 > .VCC1"
+      to=".C3 > .pin1"
+      maxLength="15mm"
+      pcbPath={[{ x: -2.4, y: -6.9 }, { x: -7.5, y: -6.9 }, { x: -7.5, y: -11.3 }, ".C3 > .pin1"]}
+    />
+    <trace from=".C8 > .pin1" to="net.V5" />
+    <trace from=".C8 > .pin2" to="net.GND" />
+    {/* GND1 and VCC1 reach C3 through separate hand-routed lanes — the
+        autorouter runs both as parallel diagonals that graze each other. */}
+    <trace
+      from=".U1 > .GND1"
+      to=".C3 > .pin2"
+      maxLength="15mm"
+      pcbPath={[{ x: -1.6, y: -9.7 }, { x: -6.5, y: -9.7 }, ".C3 > .pin2"]}
+    />
     <trace from=".C4 > .pin1" to="net.V5" />
     <trace from=".C4 > .pin2" to="net.GND" />
     <trace from=".C5 > .pin1" to="net.V5" />
     <trace from=".C5 > .pin2" to="net.GND" />
-    <trace from=".C8 > .pin1" to="net.V5" />
-    <trace from=".C8 > .pin2" to="net.GND" />
 
     {/* UCAP: internal 3.3V regulator output needs exactly 1µF (datasheet) */}
     <trace from=".U1 > .UCAP" to=".C7 > .pin1" name="UCAP" />
@@ -148,30 +200,45 @@ export default () => (
         with 22pF load caps C10/C11 to GND — inside the datasheet's 12-22pF
         window for 8-16MHz crystals (Table 6-3). The math: a crystal specced
         CL = 15pF wants C = 2·(CL − Cstray) ≈ 2·(15 − 4) = 22pF. The full
-        derivation is in the tutorial PDF. HC-49/S through-hole can is used
-        because it's trivial to hand-solder; swap to a 3225 SMD crystal +
-        its footprint if you prefer. */}
+        derivation is in the tutorial PDF.
+
+        LAYOUT IS PART OF THE SPEC: tscircuit's crystal DRC enforces
+        ≤10mm traces and 0 vias on both crystal nets (you can relax it with
+        the maxTraceLength prop — don't). We keep every segment under 3mm:
+        the caps sit between the chip and the crystal, one under each XTAL
+        pad, and the crystal's pins are cross-assigned (pin1→XTAL2,
+        pin2→XTAL1 — a crystal has no polarity, so this is free) so no
+        trace crosses its neighbor. HC-49/S through-hole can = trivial to
+        hand-solder; swap to a 3225 SMD crystal if you prefer. */}
     <crystal
       name="Y1"
       frequency="16MHz"
       loadCapacitance="15pF"
       footprint="hc49"
-      pcbX={-2}
-      pcbY={-9}
+      pcbX={-0.8}
+      pcbY={-14}
       schX={0}
       schY={-7}
     />
-    <capacitor name="C10" capacitance="22pF" footprint="0603" pcbX={-10} pcbY={-9.5} schX={-3} schY={-9} />
-    <capacitor name="C11" capacitance="22pF" footprint="0603" pcbX={6} pcbY={-9.5} schX={3} schY={-9} />
+    {/* Crystal FIRST, caps BEHIND it: Y1 sits directly under the XTAL pads;
+      C11/C10 hang vertically below Y1's own pads (crystal pin up, GND pin
+      down), so every connection is a short axial drop and the load caps
+      tie straight onto the crystal pins — the classic ATmega app-note
+      arrangement. Y1 cross-assigned (pin1→XTAL2, pin2→XTAL1; no polarity). */}
+    <capacitor name="C10" capacitance="22pF" footprint="0603" pcbX={1.64} pcbY={-18.5} pcbRotation={270} schX={-3} schY={-9} />
+    <capacitor name="C11" capacitance="22pF" footprint="0603" pcbX={-3.24} pcbY={-18.5} pcbRotation={270} schX={3} schY={-9} />
 
-    <trace from=".U1 > .XTAL1" to="net.XTAL1" />
+    {/* Net-based on purpose: with Y1 between the pads and its caps, the
+        minimum spanning tree pairs pad↔Y1 and Y1↔cap — exactly the two
+        short axial hops the layout provides. */}
     <trace from=".U1 > .XTAL2" to="net.XTAL2" />
-    <trace from=".Y1 > .pin1" to="net.XTAL1" />
-    <trace from=".Y1 > .pin2" to="net.XTAL2" />
-    <trace from=".C10 > .pin1" to="net.XTAL1" />
-    <trace from=".C10 > .pin2" to="net.GND" />
+    <trace from=".Y1 > .pin1" to="net.XTAL2" />
     <trace from=".C11 > .pin1" to="net.XTAL2" />
     <trace from=".C11 > .pin2" to="net.GND" />
+    <trace from=".U1 > .XTAL1" to="net.XTAL1" />
+    <trace from=".Y1 > .pin2" to="net.XTAL1" />
+    <trace from=".C10 > .pin1" to="net.XTAL1" />
+    <trace from=".C10 > .pin2" to="net.GND" />
 
     {/* ═════════════════════ §5 RESET & BOOTLOADER ═════════════════════════
         RESET (pin 13, active-low): 10k pull-up to 5V + tactile button to
@@ -183,18 +250,22 @@ export default () => (
         HWBE fuse is programmed (datasheet §27.5.3) — a dead-simple,
         fuse-based recovery path. PE2 is also a GPIO (Arduino D-routed on
         the HWB header pin) so the button doubles as a user input. */}
-    <resistor name="R3" resistance="10kohm" footprint="0603" pcbX={-13.5} pcbY={-10.5} schX={10} schY={-3} />
-    <pushbutton name="SW1" footprint="pushbutton" pcbX={-19} pcbY={-10.5} schX={14} schY={-3} />
-    <resistor name="R4" resistance="10kohm" footprint="0603" pcbX={-13.5} pcbY={-13.2} schX={10} schY={-6} />
-    <pushbutton name="SW2" footprint="pushbutton" pcbX={-27.5} pcbY={-11} schX={14} schY={-6} />
+    <resistor name="R3" resistance="10kohm" footprint="0603" pcbX={-19.5} pcbY={2.3} schX={10} schY={-3} />
+    <pushbutton name="SW1" footprint="pushbutton" pcbX={-19.5} pcbY={10} schX={14} schY={-3} />
+    <resistor name="R4" resistance="10kohm" footprint="0603" pcbX={-24.5} pcbY={-16.5} schX={10} schY={-6} />
+    <pushbutton name="SW2" footprint="pushbutton" pcbX={-30.5} pcbY={-15} schX={14} schY={-6} />
 
+    {/* R3/R4 V5 feed: explicit daisy-chain R3←R4←J2.V5. A plain net.V5
+        connection would let the MST wrap R3's feed around C2's GND pin
+        (both bulk caps have their GND pin on the bottom) — this way the
+        pull-ups draw from the header pin through the quiet corner. */}
     <trace from=".R3 > .left" to="net.V5" />
+    <trace from=".R4 > .left" to="net.V5" />
     <trace from=".R3 > .right" to="net.RST" />
     <trace from=".U1 > .RESET" to="net.RST" />
     <trace from=".SW1 > .pin1" to="net.RST" />
     <trace from=".SW1 > .pin3" to="net.GND" />
 
-    <trace from=".R4 > .left" to="net.V5" />
     <trace from=".R4 > .right" to="net.HWB" />
     <trace from=".U1 > .PE2" to="net.HWB" />
     <trace from=".SW2 > .pin1" to="net.HWB" />
@@ -202,18 +273,30 @@ export default () => (
 
     {/* ══════════════════════════ §6 ICSP HEADER ═══════════════════════════
         Standard 2×3 AVR ISP header — this is how you program the BLANK chip
-        the first time (bootloader + fuses). Pin 1 = MISO, marked on
-        silkscreen by the pinheader's own labels. */}
+        the first time (bootloader + fuses).
+
+        ⚠️ LABEL ORDER MATTERS. With doubleRow + pcbRotation={90}, tscircuit
+        numbers the pads in a ring: pin1 bottom-left, pin2 bottom-right,
+        pin3 mid-right, pin4 top-right, pin5 top-left, pin6 mid-left. The
+        pinLabels array below is arranged so the PHYSICAL layout comes out
+        as the standard AVR ISP grid every programmer cable expects:
+
+              MISO   VCC
+              SCK    MOSI
+              RESET  GND
+
+        Get this wrong and a keyed ISP cable would put VCC where GND
+        belongs — the proof script (npm run proof) asserts the physical
+        arrangement, so it can never silently regress. */}
     <pinheader
       name="J3"
       pinCount={6}
       doubleRow
       pitch="2.54mm"
-      pinLabels={["MISO", "VCC", "SCK", "MOSI", "RESET", "GND"]}
+      pinLabels={["RESET", "GND", "MOSI", "VCC", "MISO", "SCK"]}
       showSilkscreenPinLabels
-      pcbX={27}
-      pcbY={9}
-      pcbRotation={90}
+      pcbX={-22}
+      pcbY={-12}
       schX={16}
       schY={2}
     />
@@ -230,21 +313,22 @@ export default () => (
     <trace from=".U1 > .PB2" to="net.MOSI" />
 
     {/* ══════════════════════════ §7 INDICATORS ═══════════════════════════
-        Four LEDs, each with a worked current calculation in the tutorial:
+        Four LEDs in a row under the top header, each with a worked current
+        calculation in the tutorial:
         • PWR  — green,   V5 → LED → 1k → GND      (always on; ~3mA)
         • L    — amber,   PC7 → 1k → LED → GND     (Arduino D13, active-HIGH)
         • TX   — amber,   V5 → LED → 1k → PD5      (active-LOW: the Arduino
           core's TXLED1 macro drives the pin LOW to light it)
         • RX   — amber,   V5 → LED → 1k → PB0      (active-LOW, RXLED1 macro)
         LED pins: .pos = anode, .neg = cathode. */}
-    <led name="LED1" color="green" footprint="led0603" pcbX={-9.5} pcbY={-13} schX={-10} schY={-11} />
-    <resistor name="R5" resistance="1kohm" footprint="0603" pcbX={-6} pcbY={-13} schX={-8} schY={-11} />
-    <led name="LED2" color="amber" footprint="led0603" pcbX={-2.5} pcbY={-13} schX={-10} schY={-13.5} />
-    <resistor name="R6" resistance="1kohm" footprint="0603" pcbX={1} pcbY={-13} schX={-8} schY={-13.5} />
-    <led name="LED3" color="amber" footprint="led0603" pcbX={4.5} pcbY={-13} schX={-10} schY={-16} />
-    <resistor name="R7" resistance="1kohm" footprint="0603" pcbX={8} pcbY={-13} schX={-8} schY={-16} />
-    <led name="LED4" color="amber" footprint="led0603" pcbX={11.5} pcbY={-13} schX={-10} schY={-18.5} />
-    <resistor name="R8" resistance="1kohm" footprint="0603" pcbX={15} pcbY={-13} schX={-8} schY={-18.5} />
+    <led name="LED1" color="green" footprint="led0603" pcbX={-9.5} pcbY={16} schX={-10} schY={-11} />
+    <resistor name="R5" resistance="1kohm" footprint="0603" pcbX={-6} pcbY={16} schX={-8} schY={-11} />
+    <led name="LED2" color="amber" footprint="led0603" pcbX={1} pcbY={16} schX={-10} schY={-13.5} />
+    <resistor name="R6" resistance="1kohm" footprint="0603" pcbX={-2.5} pcbY={16} schX={-8} schY={-13.5} />
+    <led name="LED3" color="amber" footprint="led0603" pcbX={4.5} pcbY={16} schX={-10} schY={-16} />
+    <resistor name="R7" resistance="1kohm" footprint="0603" pcbX={8} pcbY={16} schX={-8} schY={-16} />
+    <led name="LED4" color="amber" footprint="led0603" pcbX={11.5} pcbY={16} schX={-10} schY={-18.5} />
+    <resistor name="R8" resistance="1kohm" footprint="0603" pcbX={15} pcbY={16} schX={-8} schY={-18.5} />
 
     {/* PWR: on whenever 5V is present */}
     <trace from=".LED1 > .pos" to="net.V5" />
@@ -258,6 +342,10 @@ export default () => (
     <trace from=".LED2 > .neg" to="net.GND" />
 
     {/* TX/RX — active-low, wired from 5V INTO the pin */}
+    {/* The LED3→LED4 V5 hop is hand-routed BELOW the LED row (pcbPath):
+        the autorouter prefers the lane above the row, where it fights the
+        SPI traces going to the top header. */}
+    <trace from=".LED3 > .pos" to=".LED4 > .pos" pcbPathRelativeTo=".LED3 > .pos" pcbPath={[{ x: 0, y: -1.3 }, { x: 6.17, y: -1.3 }, ".LED4 > .pos"]} />
     <trace from=".LED3 > .pos" to="net.V5" />
     <trace from=".LED3 > .neg" to=".R7 > .left" />
     <trace from=".R7 > .right" to=".U1 > .PD5" name="TXLED" />
@@ -272,8 +360,8 @@ export default () => (
         4.7k pull-ups on SDA (PD1/D2) and SCL (PD0/D3) so any I²C sensor
         works out of the box. They're weak enough (1mA max) to not disturb
         ordinary GPIO use of D2/D3. */}
-    <resistor name="R9" resistance="4.7kohm" footprint="0603" pcbX={14} pcbY={2} schX={10} schY={4} />
-    <resistor name="R10" resistance="4.7kohm" footprint="0603" pcbX={14} pcbY={-1} schX={10} schY={1.5} />
+    <resistor name="R9" resistance="4.7kohm" footprint="0603" pcbX={7.6} pcbY={-14.8} pcbRotation={180} schX={10} schY={4} />
+    <resistor name="R10" resistance="4.7kohm" footprint="0603" pcbX={7.6} pcbY={-13} pcbRotation={180} schX={10} schY={1.5} />
 
     <trace from=".R9 > .left" to="net.V5" />
     <trace from=".R9 > .right" to="net.SDA" />
@@ -283,8 +371,12 @@ export default () => (
     <trace from=".U1 > .PD0" to="net.SCL" />
 
     {/* ══════════════════════ §9 BREAKOUT HEADERS ══════════════════════════
-        J2 (bottom): digital side, Leonardo order, power at the USB end.
-        J4 (top):   analog + I²C + SPI + HWB + AREF, power at the USB end.
+        J2 (right edge, vertical): the digital bus — D0-D13 in Leonardo
+        order, power at the bottom end. Running it down the right edge
+        means the right-side MCU ports (PB4-PB7, PC6/PC7, PD4/4/6/7)
+        escape STRAIGHT OUT instead of carving through the chip's fan-out
+        — the single most important placement decision on this board.
+        J4 (top): analog + I²C + SPI + HWB + AREF, power at the USB end.
         Labels are silkscreened 1:1 — build a breadboard harness and the
         names match every Arduino Leonardo tutorial on the internet. */}
     <pinheader
@@ -298,8 +390,9 @@ export default () => (
         "D5", "D4", "D3", "D2", "D1", "D0",
       ]}
       showSilkscreenPinLabels
-      pcbX={0}
-      pcbY={-17.5}
+      pcbX={34}
+      pcbY={0}
+      pcbRotation={90}
       schX={16}
       schY={-10}
       schRotation={90}
@@ -316,7 +409,7 @@ export default () => (
       ]}
       showSilkscreenPinLabels
       pcbX={0}
-      pcbY={17.5}
+      pcbY={22}
       schX={16}
       schY={10}
       schRotation={90}
@@ -363,15 +456,30 @@ export default () => (
     {/* ═════════════════════ MECHANICAL & IDENTIFICATION ══════════════════
         4× M3 mounting holes (3.2mm, unplated) and board identification
         silkscreen. Unplated holes = no net = pure mechanical. */}
-    <hole name="H1" diameter="3.2mm" pcbX={-28.5} pcbY={18} />
-    <hole name="H2" diameter="3.2mm" pcbX={28.5} pcbY={18} />
-    <hole name="H3" diameter="3.2mm" pcbX={28.5} pcbY={-18} />
-    <hole name="H4" diameter="3.2mm" pcbX={-28.5} pcbY={-18} />
+    <hole name="H1" diameter="3.2mm" pcbX={-32} pcbY={22} />
+    <hole name="H2" diameter="3.2mm" pcbX={28} pcbY={22} />
+    <hole name="H3" diameter="3.2mm" pcbX={28} pcbY={-22} />
+    <hole name="H4" diameter="3.2mm" pcbX={-32} pcbY={-22} />
 
-    <silkscreentext text="uNode32U4" pcbX={26} pcbY={-8} fontSize="1.2mm" />
-    <silkscreentext text="bare ATmega32U4" pcbX={26} pcbY={-10} fontSize="0.8mm" />
-    <silkscreentext text="RST" pcbX={-19} pcbY={-15.9} fontSize="1mm" />
-    <silkscreentext text="BOOT" pcbX={-27.5} pcbY={-15.9} fontSize="1mm" />
-    <silkscreentext text="ICSP" pcbX={22.5} pcbY={12.5} fontSize="1mm" />
+    <silkscreentext text="uNode32U4" pcbX={19} pcbY={-5} fontSize="1.2mm" />
+    <silkscreentext text="bare ATmega32U4" pcbX={19} pcbY={-7} fontSize="0.8mm" />
+    <silkscreentext text="RST" pcbX={-19.5} pcbY={4.9} fontSize="1mm" />
+    <silkscreentext text="BOOT" pcbX={-30.5} pcbY={-19.4} fontSize="1mm" />
+    <silkscreentext text="ICSP" pcbX={-22} pcbY={-8.2} fontSize="1mm" />
+
+    {/* ═══════════════════════ §10 GROUND POUR ═══════════════════════════
+        The single biggest upgrade from "beginner board" to "real board":
+        a solid GND plane on the bottom layer. Every GND pin gets a short
+        via to the plane instead of a long routed trace, return currents
+        flow under their signals, EMI drops, and the top layer keeps
+        almost all the routing room for signals. Thermal reliefs keep
+        through-hole pads solderable (heat doesn't flood into the plane).
+        This is THE standard 2-layer stackup: signals on top, GND below. */}
+    <copperpour
+      connectsTo="net.GND"
+      layer="bottom"
+      padMargin="0.45mm"
+      useThermalReliefs
+    />
   </board>
 )

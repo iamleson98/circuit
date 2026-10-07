@@ -13,8 +13,8 @@
  *  THE PIN TABLE BELOW IS NOT FROM MEMORY — it is the *physical* TQFP-44
  *  pinout from the Microchip datasheet (Atmel-7766J, Fig. 1-1), verified
  *  against the official Arduino Leonardo schematic and the ArduinoCore-avr
- *  "leonardo" variant files. tscircuit's `tqfp44` footprint numbers pins
- *  counter-clockwise starting at the top-left, exactly like the datasheet:
+ *  "leonardo" variant files. tscircuit's `tqfp44_p0.8mm` footprint numbers
+ *  pins counter-clockwise starting at the top-left, exactly like the datasheet:
  *
  *      pin 1  = top of LEFT edge   (PE6)
  *      pins 1..11   go DOWN the left edge      (USB pins 2-7 live here!)
@@ -93,9 +93,18 @@ export const ATMEGA32U4_PINOUT = {
 
 export const Atmega32U4 = (props: Atmega32U4Props) => (
   <chip
-    // `footprint="tqfp44"` is a *footprinter string* — tscircuit generates
-    // a 44-pad 0.5mm-pitch TQFP land pattern (and a 3D model!) from it.
-    footprint="tqfp44"
+    // `footprint="tqfp44_p0.8mm_w10mm"` is a *footprinter string* — tscircuit
+    // generates a 44-pad TQFP land pattern (and a 3D model!) from it.
+    //
+    // ⚠️ THE _p0.8mm SUFFIX IS NOT OPTIONAL. tscircuit's tqfp footprinter
+    // defaults to a 0.5mm pin pitch for 44+ pin packages, but the
+    // ATmega32U4-AU's TQFP-44 is a 10×10mm body with a **0.8mm** pitch
+    // (datasheet §1 / package drawing 44TQFP-101). Without the override,
+    // the PCB would be un-buildable with the real chip — a textbook example
+    // of why you always check generated footprints against the package
+    // drawing before ordering boards. The 0.8mm pitch also leaves 0.5mm
+    // routing channels between the 0.3mm pads, which the fan-out needs.
+    footprint="tqfp44_p0.8mm_w10mm"
     pinLabels={ATMEGA32U4_PINOUT}
     manufacturerPartNumber="ATmega32U4-AU"
     // Schematic-box layout: all power/USB/clock/control pins on the left,
