@@ -12,3 +12,10 @@ render-schematic.svg
 # misc
 *.log
 .DS_Store
+node_modules/
+dist/
+circuit-*.json
+sim-*.csv
+gerbers-*.zip
+*.tmp.mjs
+.tscircuit/
