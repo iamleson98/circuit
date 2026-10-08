@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c-bg: #eff0f1;
+    --c-accent: #3681a6;
+    --c-accent2: #b43a4e;
+    --c-text: #1a1b1c;
+    --c-muted: #6f7578;
+    --c-mid: #334650;
+    --c-surface: #e4e7e8;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
+  html, body { margin:0; padding:0; background:var(--c-bg); }
+  .cover {
+    position:relative; width:794px; height:1123px; background:var(--c-bg);
+    border:none; outline:none; box-shadow:none; overflow:hidden;
+  }
+  .layer1 {
+    position:absolute; inset:0; overflow:hidden; z-index:1;
+    background-image:
+      linear-gradient(to right, rgba(54,129,166,0.05) 0.5px, transparent 0.5px),
+      linear-gradient(to bottom, rgba(54,129,166,0.05) 0.5px, transparent 0.5px);
+    background-size: 66px 66px;
+  }
+  .layer2 { position:absolute; inset:0; z-index:2; }
+  .anchor-line {
+    position:absolute; left:95px; top:112px; width:8px; height:899px;
+    background:var(--c-accent);
+  }
+  .layer3 { position:absolute; inset:0; z-index:3; }
+  .kicker {
+    position:absolute; left:145px; top:150px;
+    font-size:16pt; font-weight:600; letter-spacing:3pt;
+    color:var(--c-text); opacity:0.6; text-transform:uppercase;
+  }
+  .hero {
+    position:absolute; left:145px; top:265px; width:540px;
+    font-size:46pt; font-weight:900; line-height:1.13;
+    color:var(--c-mid); letter-spacing:-0.5pt;
+  }
+  .hero .thin { color: var(--c-accent); }
+  .summary {
+    position:absolute; left:145px; top:640px; width:490px;
+    font-size:13.5pt; font-weight:400; line-height:1.6;
+    color:var(--c-text); opacity:0.85;
+  }
+  .meta {
+    position:absolute; left:145px; top:872px;
+    font-size:13pt; font-weight:600; color:var(--c-text); line-height:1.8;
+  }
+  .meta .muted { color:var(--c-muted); font-weight:400; font-size:12pt; }
+  .footer {
+    position:absolute; left:145px; top:1010px;
+    font-size:11pt; font-weight:600; letter-spacing:2pt;
+    color:var(--c-muted); text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="layer1"></div>
+  <div class="layer2">
+    <div class="anchor-line"></div>
+  </div>
+  <div class="layer3">
+    <div class="kicker">Design &amp; Build Tutorial</div>
+    <div class="hero">Radio Lab<br><span class="thin">Build Your Own</span><br>AM Station</div>
+    <div class="summary">
+      A tunable AM transmitter and its matching receiver &mdash; four transistors
+      and a coil on one board, three transistors and a diode on the other.
+      Every stage is derived from first principles, proven by simulation, and
+      buildable on a perfboard with parts from any hobby shop. You will hear
+      your own voice come out of a radio you tuned yourself.
+    </div>
+    <div class="meta">
+      Designed with tscircuit &middot; React for electronics<br>
+      <span class="muted">29 math checks &middot; 7 simulation proofs &middot; 76 parts &middot; zero DRC errors &middot; October 2026</span>
+    </div>
+    <div class="footer">AM 650-850 kHz &middot; Colpitts &middot; Envelope Detector &middot; LM386</div>
+  </div>
+</div>
+</body>
+</html>

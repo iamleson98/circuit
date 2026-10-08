@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --ink: #1a1b1c; --muted: #6f7578; --accent: #3681a6; --accent2: #b43a4e;
+    --header: #334650; --border: #b8c8cf; --fill: #eff0f1;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1360px; background: #ffffff; font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+    color: var(--ink); padding: 28px 30px 24px;
+  }
+  .title { font-size: 26px; font-weight: 700; color: var(--header); margin-bottom: 4px; }
+  .sub { font-size: 15px; color: var(--muted); margin-bottom: 22px; }
+  .rail { display: flex; gap: 0; align-items: stretch; justify-content: center; }
+  .stage {
+    width: 190px; border: 2px solid var(--border); border-radius: 10px;
+    background: var(--fill); padding: 12px 10px 10px; text-align: center;
+    display: flex; flex-direction: column; justify-content: flex-start;
+  }
+  .stage.hot { border-color: var(--accent); background: #eaf3f7; }
+  .stage.det { border-color: var(--accent2); background: #f8eef0; }
+  .stage .tag { font-size: 12px; letter-spacing: 1.5px; color: var(--accent); font-weight: 700; margin-bottom: 4px; }
+  .stage.det .tag { color: var(--accent2); }
+  .stage .name { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .stage .part { font-size: 14px; color: var(--header); font-weight: 600; margin-bottom: 6px; }
+  .stage .desc { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+  .arrow { align-self: center; width: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .arrow .lbl { font-size: 11.5px; color: var(--muted); margin-bottom: 2px; text-align: center; }
+  .arrow svg { display: block; }
+  .note { margin-top: 24px; text-align: center; font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .note b { color: var(--header); }
+</style>
+</head>
+<body>
+  <div class="title">AM-RX — the receiver as a chain of rescues</div>
+  <div class="sub">Each stage saves the signal from one problem until audio comes out of the speaker</div>
+
+  <div class="rail">
+    <div class="stage">
+      <div class="tag">FROM AIR</div>
+      <div class="name">Antenna</div>
+      <div class="part">1-2 m wire</div>
+      <div class="desc">Passes through the room's radio waves and picks up a blur of every station at once (µV-mV)</div>
+    </div>
+    <div class="arrow"><div class="lbl">everything,&nbsp;faintly</div>
+      <svg width="44" height="16"><line x1="0" y1="8" x2="34" y2="8" stroke="#3681a6" stroke-width="2.5"/><polygon points="34,2 44,8 34,14" fill="#3681a6"/></svg>
+    </div>
+    <div class="stage hot">
+      <div class="tag">CHOOSE ONE</div>
+      <div class="name">LC tank</div>
+      <div class="part">L1 ∥ CV1 · TUNE</div>
+      <div class="desc">A coil and the tuning cap resonate: only the selected station survives; everything else is shorted to ground</div>
+    </div>
+    <div class="arrow"><div class="lbl">one&nbsp;station</div>
+      <svg width="44" height="16"><line x1="0" y1="8" x2="34" y2="8" stroke="#3681a6" stroke-width="2.5"/><polygon points="34,2 44,8 34,14" fill="#3681a6"/></svg>
+    </div>
+    <div class="stage">
+      <div class="tag">DON'T LOAD IT</div>
+      <div class="name">Buffer</div>
+      <div class="part">Q1 · follower</div>
+      <div class="desc">Copies the tank voltage without draining it, keeping the tuning sharp (Q stays high)</div>
+    </div>
+    <div class="arrow"><div class="lbl">same,&nbsp;sturdier</div>
+      <svg width="44" height="16"><line x1="0" y1="8" x2="34" y2="8" stroke="#3681a6" stroke-width="2.5"/><polygon points="34,2 44,8 34,14" fill="#3681a6"/></svg>
+    </div>
+    <div class="stage">
+      <div class="tag">LOUDER</div>
+      <div class="name">RF amplifier</div>
+      <div class="part">Q2 · gain ≈ 90×</div>
+      <div class="desc">Lifts the millivolts of radio into tens/hundreds of mV — enough for a diode to bite</div>
+    </div>
+    <div class="arrow"><div class="lbl">big&nbsp;RF</div>
+      <svg width="44" height="16"><line x1="0" y1="8" x2="34" y2="8" stroke="#3681a6" stroke-width="2.5"/><polygon points="34,2 44,8 34,14" fill="#3681a6"/></svg>
+    </div>
+    <div class="stage det">
+      <div class="tag">UN-WRAP</div>
+      <div class="name">Detector</div>
+      <div class="part">D1 (1N34A) + C8</div>
+      <div class="desc">Keeps only the tops of the RF cycles → what's left IS the voice that rode the envelope</div>
+    </div>
+    <div class="arrow"><div class="lbl">audio&nbsp;again</div>
+      <svg width="44" height="16"><line x1="0" y1="8" x2="34" y2="8" stroke="#3681a6" stroke-width="2.5"/><polygon points="34,2 44,8 34,14" fill="#3681a6"/></svg>
+    </div>
+    <div class="stage">
+      <div class="tag">TO YOUR EAR</div>
+      <div class="name">Audio amp</div>
+      <div class="part">RV1 + LM386</div>
+      <div class="desc">Volume knob, then up to 0.5 W into the speaker (GAIN switch: 20×/200× for weak stations)</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Side branch:</b> the detector's DC level also feeds Q3 + LED2 — the "signal LED" that glows when you are
+    tuned into a strong station, which turns finding the transmitter into a visual game.
+  </div>
+</body>
+</html>
