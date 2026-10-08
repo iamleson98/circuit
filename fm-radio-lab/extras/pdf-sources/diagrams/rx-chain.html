@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --ink: #1a1b1c; --muted: #6f7578; --accent: #3681a6; --accent2: #b43a4e;
+    --header: #334650; --border: #b8c8cf; --fill: #eff0f1; --pale: #e4e7e8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1360px; background: #ffffff; font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+    color: var(--ink); padding: 28px 30px 24px;
+  }
+  .title { font-size: 26px; font-weight: 700; color: var(--header); margin-bottom: 4px; }
+  .sub { font-size: 15px; color: var(--muted); margin-bottom: 22px; }
+  .rail { display: flex; gap: 0; align-items: stretch; justify-content: center; }
+  .stage {
+    width: 216px; border: 2px solid var(--border); border-radius: 10px;
+    background: var(--fill); padding: 12px 10px 10px; text-align: center;
+    display: flex; flex-direction: column; justify-content: flex-start;
+  }
+  .stage.hot { border-color: var(--accent); background: #eaf3f7; }
+  .stage.hot2 { border-color: var(--accent2); background: #f8eef0; }
+  .stage .tag { font-size: 12px; letter-spacing: 1.5px; color: var(--accent); font-weight: 700; margin-bottom: 4px; }
+  .stage.hot2 .tag { color: var(--accent2); }
+  .stage .name { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .stage .part { font-size: 13.5px; color: var(--header); font-weight: 600; margin-bottom: 6px; }
+  .stage .desc { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+  .arrow { align-self: center; width: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .arrow .lbl { font-size: 11px; color: var(--muted); margin-bottom: 2px; text-align: center; }
+  .arrow svg { display: block; }
+  .quenchrow { margin-top: 26px; display: flex; justify-content: center; }
+  .qbox { border: 2px dashed var(--accent2); border-radius: 8px; padding: 10px 20px; background: #fdf7f8; text-align: center; max-width: 900px; }
+  .qbox .t { font-size: 15px; font-weight: 700; color: var(--accent2); }
+  .qbox .d { font-size: 12.5px; color: var(--muted); line-height: 1.45; margin-top: 4px; }
+  .legend { margin-top: 18px; display: flex; gap: 26px; justify-content: center; font-size: 12.5px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .s1 { display:inline-block; width:26px; height:4px; background: var(--accent); border-radius:2px; }
+  .s2 { display:inline-block; width:26px; height:0; border-top: 2.5px dashed var(--accent2); }
+</style>
+</head>
+<body>
+  <div class="title">FM-RX — the receiver: an oscillator that listens</div>
+  <div class="sub">Q1 is the SAME oscillator as the transmitter — strangled 50,000 times a second, it becomes a receiver</div>
+
+  <div class="rail">
+    <div class="stage">
+      <div class="tag">FROM THE AIR</div>
+      <div class="name">Wire antenna</div>
+      <div class="part">30-75 cm + C3 3.3pF</div>
+      <div class="desc">Loose coupling: signals get in without dragging the tank off frequency.</div>
+    </div>
+    <div class="arrow"><div class="lbl">µV-mV</div><svg width="40" height="14"><line x1="0" y1="7" x2="30" y2="7" stroke="#3681a6" stroke-width="2.5"/><polygon points="30,2 40,7 30,12" fill="#3681a6"/></svg></div>
+    <div class="stage hot2">
+      <div class="tag">THE STAR ★</div>
+      <div class="name">Super-regen detector</div>
+      <div class="part">Q1 · THE TX's Colpitts core<br>L1 ∥ TRIM1 · TUNE knob</div>
+      <div class="desc">An oscillator that keeps re-igniting from whatever rides its tank: noise (hiss) or a carrier (your station). Gain in TIME: µV seeds become 2-volt bursts.</div>
+    </div>
+    <div class="arrow"><div class="lbl">burst<br>envelope</div><svg width="40" height="14"><line x1="0" y1="7" x2="30" y2="7" stroke="#3681a6" stroke-width="2.5"/><polygon points="30,2 40,7 30,12" fill="#3681a6"/></svg></div>
+    <div class="stage">
+      <div class="tag">CLEAN UP</div>
+      <div class="name">Audio filter</div>
+      <div class="part">R12·C9 + R13·C10<br>2 poles @ 3.4 kHz</div>
+      <div class="desc">Strips the 50 kHz quench residue; speech-band audio passes. Then the volume pot.</div>
+    </div>
+    <div class="arrow"><div class="lbl">mV audio</div><svg width="40" height="14"><line x1="0" y1="7" x2="30" y2="7" stroke="#3681a6" stroke-width="2.5"/><polygon points="30,2 40,7 30,12" fill="#3681a6"/></svg></div>
+    <div class="stage">
+      <div class="tag">MAKE IT LOUD</div>
+      <div class="name">Audio amp</div>
+      <div class="part">Q4 · class-A, gain ≈ 5.7×</div>
+      <div class="desc">Clean, linear common-emitter stage drives a crystal earphone or 32Ω earbuds.</div>
+    </div>
+    <div class="arrow"><div class="lbl"></div><svg width="40" height="14"><line x1="0" y1="7" x2="30" y2="7" stroke="#3681a6" stroke-width="2.5"/><polygon points="30,2 40,7 30,12" fill="#3681a6"/></svg></div>
+    <div class="stage">
+      <div class="tag">TO YOUR EAR</div>
+      <div class="name">Earphone</div>
+      <div class="part">crystal / high-Z</div>
+      <div class="desc">Sweep TUNE and hunt for the transmitter: hiss → THUMP → station.</div>
+    </div>
+  </div>
+
+  <div class="quenchrow">
+    <div class="qbox">
+      <div class="t">The strangler — Q2+Q3, a textbook astable at ~50 kHz</div>
+      <div class="d">Every 20 µs: KILL the detector (base pulled to 0.42 V, dead) → let the tank settle → RAMP the base up through the oscillation threshold (the burst ignites, seeded by noise or carrier) → 2 V burst → KILL again. Ultrasonic, deterministic — the factory-standard way to super-regenerate. FM is heard by tuning a hair OFF the station: on the tank's response slope, frequency wobble becomes amplitude wobble, and the burst envelope carries the audio.</div>
+    </div>
+  </div>
+  <div class="legend">
+    <span><span class="s1"></span> signal path</span>
+    <span><span class="s2"></span> the quench gate (50 kHz)</span>
+  </div>
+</body>
+</html>

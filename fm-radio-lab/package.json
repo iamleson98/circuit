@@ -1,0 +1,37 @@
+{
+  "name": "fm-radio-lab",
+  "version": "1.0.0",
+  "description": "FM Radio Lab — a beginner FM transmitter + super-regenerative receiver pair designed in tscircuit (React for circuits)",
+  "type": "module",
+  "scripts": {
+    "dev:tx": "tsci dev transmitter/index.tsx",
+    "dev:rx": "tsci dev receiver/index.tsx",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.build.json && node fix-imports.mjs",
+    "verify": "node verify.mjs",
+    "render": "node render.mjs",
+    "math": "node calc/circuit_math.mjs",
+    "sim": "node calc/sim_fm.mjs"
+  },
+  "keywords": [
+    "tscircuit",
+    "pcb",
+    "radio",
+    "fm-transmitter",
+    "fm-receiver",
+    "super-regenerative",
+    "electronics"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@tscircuit/core": "^0.0.2104",
+    "@tscircuit/props": "^0.0.694",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/react": "^19.3.0",
+    "circuit-to-svg": "^0.0.444",
+    "typescript": "^5.9.3"
+  }
+}

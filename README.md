@@ -9,6 +9,7 @@ React components. Each folder is a self-contained project.
 |---|---|---|
 | [`unode-32u4/`](./unode-32u4) | **μNode32U4** — a bare-chip ATmega32U4 (TQFP-44) USB dev board: USB front-end, 16 MHz crystal, reset/boot circuitry, ICSP, LEDs, I²C pull-ups, full breakout. 35 components, ~105 routed traces. | Intermediate |
 | [`radio-lab/`](./radio-lab) | **Radio Lab** — a beginner AM transmitter + receiver pair you can build on perfboard: 4-transistor AM-TX (Colpitts oscillator + modulated final) and 40-part AM-RX (LC tank, 1N34A detector, LM386). Proven by 29 math checks + 7 numerical-simulation tests. | Beginner ★ |
+| [`fm-radio-lab/`](./fm-radio-lab) | **FM Radio Lab** — the FM sibling: a 2-transistor FM-TX (the oscillator's own junction capacitances perform the modulation) and a 4-transistor super-regenerative FM-RX — literally the transmitter's oscillator core, strangled 50,000×/s by an astable. Proven by 37 math checks + 21 simulation proofs (FM deviation, quench, quieting, end-to-end slope detection). | Beginner ★ |
 
 ## Quick start (μNode32U4)
 
@@ -29,6 +30,23 @@ part numbers, PCB assembly craft, and bootloader bring-up.
 Headless tooling (typecheck / build / netlist audit / SVG render) is described
 in the project README.
 
+
+## FM Radio Lab — build your own FM station
+
+```bash
+cd fm-radio-lab
+npm install -g tscircuit   # once — provides the `tsci` CLI
+npm install
+npm run dev:tx             # → transmitter in the browser (PCB / schematic / 3D)
+npm run dev:rx             # → receiver
+npm run math               # 37 design equations, asserted
+npm run sim                # 21 numerical proofs (~6 min)
+```
+
+Zero-install alternative: open <https://snippets.tscircuit.com> and paste in
+`fm-radio-lab/standalone/fm-tx-playground.tsx` or `fm-rx-playground.tsx`.
+**Start with `fm-radio-lab/docs/fm-radio-lab-tutorial.pdf`** — the 21-page
+theory→build→experiment book, including why the receiver is the transmitter.
 
 ## Radio Lab — build your own AM radio station
 
