@@ -1,0 +1,13 @@
+[package]
+name = "tricolor-lamp"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Tri-color-lamp firmware in Rust: a verified counterpart of the C firmware in tricolor-lamp/firmware/tricolor_lamp/"
+
+[dependencies]
+
+# The AVR backend (src/bin/tricolor_lamp.rs) needs the avr-device PAC,
+# target-gated so host builds (cargo test / clippy) never fetch it.
+[target.'cfg(target_arch = "avr")'.dependencies]
+avr-device = { version = "0.7", features = ["attiny85", "rt"] }

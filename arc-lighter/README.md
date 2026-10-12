@@ -669,6 +669,7 @@ re-set the gap occasionally. Keep the tip free of ash and lint.
 | Design math | `npm run math` | **28/28** |
 | Simulation | `npm run build && npm run sim` | **14/14** |
 | Firmware logic | `npm run test:firmware` | **28/28** |
+| Firmware logic, Rust port | `cd ../firmware-rust && cargo test` | **28/28 C checks replayed + 3/3 whole-firmware tests** (see [`firmware-rust/`](../firmware-rust)) |
 | Fabrication | `tsci export -f gerbers board/index.tsx` | Gerbers, drill, BOM, pick-and-place |
 
 **The simulation** (`calc/sim_driver.mjs`) converts the routed board into a

@@ -903,6 +903,7 @@ Everything here runs on your computer; nothing is "trust me".
 | Design equations | `npm run math` | 47 worst-case calculations: LED currents at every corner (≤ 30 mA even with everything against us), resistor and regulator heat, the ADC readings, the MODE readings including pin leakage, the hold-up time (≥ 5 s worst case), gate drive, EEPROM life |
 | Circuit simulation | `npm run sim` | Both routed boards turned into one netlist and simulated: string currents per colour at 11.4/12/12.6 V, other colours dark, MODE readings, reversed supply, a full switch-off with the firmware's rules running (off seen 30 ms after the supply stops; no false switch-on as it drains), worst-case hold-up |
 | Firmware | `npm run test:firmware` | 33 logic checks + the real `main.c` in 15 switch scenarios against a model of the electronics |
+| Firmware, Rust port | `cd ../firmware-rust && cargo test` | 33 logic checks + the real firmware in the **same 15 switch scenarios** against the same model — all replayed from the C suite (see [`firmware-rust/`](../firmware-rust)) |
 | The tests themselves | `npm run test:mutants` | 12 planted bugs, 12 caught |
 | Manufacturing files | `tsci export -f gerbers …` | Both boards export; drill files list exactly the planned hole sizes (e.g. 120 × 1.0 mm for the 60 LEDs) |
 

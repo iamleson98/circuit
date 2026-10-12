@@ -30,6 +30,7 @@ comments written for a beginner.
 | [`fm-radio-lab/`](./fm-radio-lab) | **FM Radio Lab** — the FM sibling: a 2-transistor varactor-modulated FM-TX (damped tank, 1 pF : 100 pF antenna feed, ≤ 20 cm wire) and a 6-transistor super-regenerative FM-RX — the transmitter's oscillator core, buffered from the antenna and strangled ~70,000×/s by an astable. Proven by 43 math checks + 22 checks simulated on the routed boards (tuning stays below 108 MHz, radiation estimates under the FCC limits, capture, audio). | Beginner ★ |
 | [`tricolor-lamp/`](./tricolor-lamp) | **Tri-Color Lamp** — a 12 V LED lamp that steps blue → white → yellow each time you flip the wall switch, like store-bought "3-colour" ceiling lamps, without touching mains (a certified 12 V supply does that). An ATtiny85 controller that times power-offs on a 220 µF reservoir, measures the supply's sag with its ADC, remembers the colour in a wear-levelled EEPROM journal; a 60-LED panel. Proven by a 2-board audit, 47 worst-case math checks, 23 checks simulated on both routed boards joined by their cable, 33 firmware unit tests, the real firmware run against a model of the lamp in 15 switch scenarios, and 12/12 planted bugs caught. Explained from zero. | Beginner ★ |
 | [`arc-lighter/`](./arc-lighter) | **Arc Lighter** — a USB-rechargeable electric arc lighter: MCP73831 charger, LOCK switch, an ATtiny85 safety supervisor (hold-to-fire, 8 s limit, low-battery and coil-fault cut-offs), and a current-limited self-oscillating driver for a bought high-voltage coil. Proven by a board audit (hand-routed 0.8 mm current loop), 28 math checks, 14 checks simulated across 12 coil corners and 2 faults, and 28 firmware tests. **Makes ~10 kV — read its safety section first.** | Intermediate |
+| [`firmware-rust/`](./firmware-rust) | **The same two ATtiny85 firmwares, again, in Rust** — not transliterated: re-designed the way Rust wants it (typed registers via avr-device, hardware seams as traits, invalid states made unrepresentable), then held to the *C test suites themselves*: all 76 C checks replayed and passing (28 lighter + 33 lamp + 15 lamp-electronics scenarios), plus whole-lighter-firmware tests the C never had. Both flash images build for the chip (2746 / 3826 bytes vs the C's 1174 / 2056 — the honest trade-off). Start at [`firmware-rust/docs/C-vs-Rust.md`](./firmware-rust/docs/C-vs-Rust.md). | Intermediate |
 
 All boards were reviewed in October 2026: every fix is listed in the
 project READMEs, and each tutorial PDF (which predates the review) has an
@@ -113,6 +114,17 @@ npm run test:firmware      # 28 firmware tests
 **Read `arc-lighter/README.md` — "Start here" and §1 Safety first.** It
 explains how a 3.7 V cell makes a 10 kV arc, every block of the board,
 the firmware's safety rules, parts, programming and a staged bring-up.
+
+## The firmware, again, in Rust
+
+[`firmware-rust/`](./firmware-rust) re-writes both ATtiny85 firmwares
+(arc lighter + tri-color lamp) in Rust and proves them the same way the C
+was proven: against the **C's own test suites** — 28 + 33 + 15 checks,
+replayed unchanged, all passing — plus whole-firmware tests the C could
+not do, and flash images that build for the real chip. If you want to
+*see* the difference between writing C and Rust (same circuit, same
+rules, same tests, two languages), read
+[`firmware-rust/docs/C-vs-Rust.md`](./firmware-rust/docs/C-vs-Rust.md).
 
 ## Radio Lab — build your own AM radio station
 

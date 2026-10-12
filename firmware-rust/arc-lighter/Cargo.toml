@@ -1,0 +1,23 @@
+[package]
+name = "arc-lighter"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Arc-lighter firmware in Rust: a verified counterpart of the C firmware in arc-lighter/firmware/arc_lighter/"
+
+# The library (logic + generic firmware) is no_std and dependency-free:
+# it compiles for the host (tests) and for the ATtiny85 (the flash image)
+# from the same source, exactly like lighter.c is compiled by cc AND avr-gcc.
+[dependencies]
+
+# The AVR backend (src/bin/arc_lighter.rs) needs the avr-device PAC — the Rust
+# equivalent of avr-libc's <avr/io.h>. It is target-gated so host builds
+# (cargo test / clippy) never download or compile it.
+[target.'cfg(target_arch = "avr")'.dependencies]
+avr-device = { version = "0.7", features = ["attiny85", "rt"] }
+
+[features]
+## Build variant: `cargo build --features module` ≡ the C's `make MODULE=1`:
+## a complete arc module on MOD+/MOD−, with no collector for the coil
+## monitor to watch, so that rule is switched off. Default off.
+module = []

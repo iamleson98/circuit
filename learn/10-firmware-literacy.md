@@ -511,5 +511,10 @@ identical.*
 
 ---
 
-**Next:** nothing — this is the last chapter. From here, open either
-`firmware/` folder and just read: every file now explains itself.
+**Next:** the same firmware, again, in Rust — open
+[`firmware-rust/`](../firmware-rust). Both firmwares you met here were
+re-written in Rust, held to these same C test suites (all 76 checks
+replayed and passing), and built into real flash images for the same
+ATtiny85. [`firmware-rust/docs/C-vs-Rust.md`](../firmware-rust/docs/C-vs-Rust.md)
+walks through every place the two languages actually differ — the best
+way to *see* the difference is to diff it.

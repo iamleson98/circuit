@@ -1,0 +1,23 @@
+# firmware-rust — the Rust counterparts of this repo's two C firmwares.
+#
+# One Cargo workspace, two member crates, mirroring the C layout:
+#   arc-lighter/   ≡ arc-lighter/firmware/arc_lighter/   (C: avr-gcc + avr-libc)
+#   tricolor-lamp/ ≡ tricolor-lamp/firmware/tricolor_lamp/
+#
+# Cargo plays the role the C project gives to make + avr-gcc + avrdude:
+#   cargo test                 ≡ sh firmware/test/run.sh   (PC tests)
+#   cargo build --release ...  ≡ make                      (cross-compile, see README)
+[workspace]
+resolver = "2"
+members = ["arc-lighter", "tricolor-lamp"]
+
+# The flash images. ≡ the C Makefile's -Os -ffunction-sections -fdata-sections
+# + -Wl,--gc-sections (rustc passes --gc-sections to avr-gcc by default):
+# optimise for SIZE (8 KB of flash total — every byte counts), one codegen
+# unit and fat LTO so the whole graph (core included) gets one pass.
+# `cargo test` uses the dev profile, so host testing keeps unwinding + speed.
+[profile.release]
+panic = "abort"
+opt-level = "s"
+lto = true
+codegen-units = 1
