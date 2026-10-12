@@ -411,6 +411,15 @@ coil gives 7.5-16.5 kHz (simulated), a stalled one gives zero.
 
 `firmware/arc_lighter/` — plain C for avr-gcc, about 250 lines.
 
+> **Learning to read it:** every file in `firmware/` (the C sources, the
+> Makefile, `platformio.ini`, `run.sh`, the tests) now carries line-by-line
+> comments written for a beginner — what a register is, why `volatile`, how
+> the Makefile's rules work. The course chapter that explains the whole
+> system — the chip's register "API", the library (avr-libc), compilation,
+> flashing, and what makes the chip execute the code — is
+> **[`learn/10-firmware-literacy.md`](../learn/10-firmware-literacy.md)**.
+> Start there, then read the sources top to bottom.
+
 - `lighter.c` / `lighter.h` — **all the decisions**, with no hardware in
   them. Every 10 ms `main.c` hands it the inputs (button, USB, cell voltage,
   coil pulses counted) and gets back "fire / LED / may sleep".

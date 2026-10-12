@@ -502,6 +502,18 @@ well within their rating (calc §1).
 `firmware/tricolor_lamp/` — about 300 lines of plain C. If you write
 software, this is the friendly part: it's an event loop with a sleep.
 
+> **Learning to read it:** every file under `firmware/` — the C sources,
+> the Makefile, `platformio.ini`, `run.sh`, the tests, the simulator and
+> its stand-in headers, even `mutation_test.py` — now carries line-by-line
+> comments written for a beginner: what a register is, what `_BV()` does,
+> why `volatile`, how the Makefile's rules work, how the same code is
+> compiled for the chip *and* for your PC. The course chapter that puts
+> the whole system in one story — the chip's register "API", the library
+> (avr-libc), what each module exposes, compilation, flashing, and what
+> makes the chip execute the code — is
+> **[`learn/10-firmware-literacy.md`](../learn/10-firmware-literacy.md)**.
+> Start there, then read the sources top to bottom.
+
 - **`lamp.c` / `lamp.h`** — all the *decisions*, with no hardware in them:
   which colour comes next, is the 12 V on, the EEPROM notebook. Being
   plain C, they compile and are unit-tested on your computer.

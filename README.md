@@ -13,6 +13,14 @@ the whole circuit connected?* It then walks you through every board in
 this repo, guided, part by part. No background required:
 **[`learn/README.md`](./learn/README.md)** is the map.
 
+The course also covers the third artifact — **the program inside the
+chips**: [`learn/10-firmware-literacy.md`](./learn/10-firmware-literacy.md)
+explains the C code, the build files (`Makefile`, `.sh`, `platformio.ini`)
+and the whole toolchain (what API a microcontroller offers, how
+compilation and flashing work, what makes the chip execute the code) —
+and every file in the two `firmware/` folders now carries line-by-line
+comments written for a beginner.
+
 ## Projects
 
 | Folder | What it is | Difficulty |
