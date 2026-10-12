@@ -1,5 +1,7 @@
 # μNode32U4 — a bare-chip ATmega32U4 USB dev board, in tscircuit
 
+> 📖 **Reading guide:** [`learn/07-tour-unode-32u4.md`](../learn/07-tour-unode-32u4.md) walks through this board's schematic and PCB (and the [`learn/`](../learn) course teaches schematic/PCB reading from zero).
+
 A complete, manufacturable 2-layer USB dev board built around **one bare
 ATmega32U4 (TQFP-44)** and 36 primary components. No Arduino module, no
 dev-board-in-a-board — this is the "roll your own Leonardo from first

@@ -1,5 +1,7 @@
 # FM Radio Lab — build your own FM station (and hear it work)
 
+> 📖 **Reading guide:** [`learn/06-tour-fm-radio-lab.md`](../learn/06-tour-fm-radio-lab.md) walks through both boards' schematics and PCBs (and the [`learn/`](../learn) course teaches schematic/PCB reading from zero).
+
 A **beginner-friendly FM transmitter + super-regenerative receiver pair**,
 designed in [tscircuit](https://tscircuit.com) (React for circuits),
 simulated from the routed boards, and buildable with ~$15 of through-hole

@@ -1,5 +1,7 @@
 # Arc Lighter — build a rechargeable electric arc lighter, and understand every part of it
 
+> 📖 **Reading guide:** [`learn/09-tour-arc-lighter.md`](../learn/09-tour-arc-lighter.md) walks through the board's schematic and PCB (and the [`learn/`](../learn) course teaches schematic/PCB reading from zero).
+
 A USB-rechargeable lighter that makes a continuous electric arc between two
 electrodes instead of a flame — hot enough to light paper, a candle wick or
 a cigarette, with no fuel and nothing to blow out. Designed in

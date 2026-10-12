@@ -1,5 +1,7 @@
 # Radio Lab — build your own AM radio station (and hear it work)
 
+> 📖 **Reading guide:** [`learn/05-tour-am-radio-lab.md`](../learn/05-tour-am-radio-lab.md) walks through both boards' schematics and PCBs (and the [`learn/`](../learn) course teaches schematic/PCB reading from zero).
+
 A **beginner-friendly AM transmitter + receiver pair**, designed in
 [tscircuit](https://tscircuit.com) (React for circuits), simulated from the
 routed boards, and buildable on a perfboard with ~$15 of through-hole parts.

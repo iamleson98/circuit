@@ -1,5 +1,7 @@
 # Tri-Color Lamp — a lamp that changes colour every time you flip the switch
 
+> 📖 **Reading guide:** [`learn/08-tour-tricolor-lamp.md`](../learn/08-tour-tricolor-lamp.md) walks through both boards' schematics and PCBs (and the [`learn/`](../learn) course teaches schematic/PCB reading from zero).
+
 Flip the wall switch on: the lamp glows **blue**. Flip it off and on again:
 **white**. Again: **yellow**. Again: blue … exactly like the "3-colour"
 LED ceiling lamps sold everywhere — but this one is yours, runs on safe

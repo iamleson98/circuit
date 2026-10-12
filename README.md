@@ -3,6 +3,16 @@
 Design-and-learn electronics: real, manufacturable circuits described as
 React components. Each folder is a self-contained project.
 
+## 📚 New to electronics? Start with `learn/`
+
+[`learn/`](./learn) is a from-zero course in reading, writing and
+understanding the two drawings every project here is made of — the
+**schematic** and the **PCB layout** — including the classic beginner
+question *why does the schematic show separate little parts instead of
+the whole circuit connected?* It then walks you through every board in
+this repo, guided, part by part. No background required:
+**[`learn/README.md`](./learn/README.md)** is the map.
+
 ## Projects
 
 | Folder | What it is | Difficulty |
