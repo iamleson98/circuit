@@ -22,9 +22,10 @@
  *    load it — the tank keeps its sharpness (Q).
  *  · Q2 (common emitter, gain ≈ 80) lifts the microvolt/millivolt RF up
  *    to where a diode can do its job.
- *  · D1 (1N34A germanium) rectifies: it keeps only the positive half of
- *    the RF, and C8 fills in the gaps → what's left is the audio
- *    envelope. This is THE detector of the crystal-radio age.
+ *  · D1 + D2 (1N34A germanium) rectify as a voltage doubler: D2 restores
+ *    the DC level that coupling cap C7 removes, D1 keeps the positive
+ *    peaks, and C8 fills in the gaps → what's left is the audio envelope.
+ *    This is THE detector of the crystal-radio age.
  *  · RV1 (10k pot) is both the detector load and the volume control.
  *  · Q3 + LED2 make a "signal LED" — it glows when a strong station is
  *    tuned in, which makes hunting for the transmitter's carrier a
@@ -50,22 +51,25 @@ import {
   AntennaPad,
   NpnTo92,
   Lm386,
+  VolumePot,
+  FAB_RULES,
+  Cap,
+  ECap,
+  Led5mm,
+  Res,
+  AxialDiode,
 } from "../lib/parts"
 
 export default () => (
-  <board
-    width="99.06mm"
-    height="60.96mm"
-    name="am-rx"
-  >
+  <board width="99.06mm" height="60.96mm" name="am-rx" {...FAB_RULES}>
     {/* ═══════════════════════ §1 POWER ENTRY ═════════════════════════════ */}
 
-    <Battery9V name="BT1" pcbX={-38.1} pcbY={-24.13} schX={-14} schY={-8} />
+    <Battery9V name="BT1" pcbX={-40.64} pcbY={-24.13} schX={-14} schY={-8} />
     <PowerSwitch name="SW1" pcbX={-30.48} pcbY={-24.13} schX={-10} schY={-8} />
-    <capacitor name="C1" capacitance="100uF" footprint="radial_p5mm" pcbX={-38.1} pcbY={-13.97} schX={-12} schY={-4} />
-    <capacitor name="C2" capacitance="100nF" footprint="radial_p2.54mm" pcbX={-29.21} pcbY={-13.97} schX={-9} schY={-4} />
-    <led name="LED1" color="green" footprint="radial_p2.54mm" pcbX={-21.59} pcbY={-22.86} schX={-6} schY={-7} />
-    <resistor name="R1" resistance="2.2kohm" footprint="axial_p10.16mm" pcbX={-11.43} pcbY={-22.86} schX={-4} schY={-7} />
+    <ECap name="C1" capacitance="100uF" pitch={5} pcbX={-38.1} pcbY={-13.97} schX={-12} schY={-4} />
+    <Cap name="C2" capacitance="100nF" pcbX={-29.21} pcbY={-13.97} schX={-9} schY={-4} />
+    <Led5mm name="LED1" color="green" pcbX={-21.59} pcbY={-22.86} schX={-6} schY={-7} />
+    <Res name="R1" resistance="2.2kohm" pitch={10.16} pcbX={-11.43} pcbY={-22.86} schX={-4} schY={-7} />
 
     <trace from=".BT1 > .pin1" to=".SW1 > .pin1" />
     <trace from=".SW1 > .pin2" to="net.V9" />
@@ -90,10 +94,10 @@ export default () => (
         path through the coil (a coil is a short circuit at DC!). */}
 
     <AntennaPad name="ANT1" pcbX={-46.99} pcbY={15.24} schX={-17} schY={9} />
-    <capacitor name="C3" capacitance="47pF" footprint="radial_p2.54mm" pcbX={-44.45} pcbY={10.16} schX={-15} schY={9} />
+    <Cap name="C3" capacitance="47pF" pcbX={-44.45} pcbY={10.16} schX={-15} schY={9} />
     <inductor name="L1" inductance="220uH" footprint="radial_p5mm" pcbX={-35.56} pcbY={10.16} schX={-13} schY={11} />
     <VarCap name="CV1" pcbX={-36.83} pcbY={26.67} schX={-13} schY={14} />
-    <capacitor name="C4" capacitance="100nF" footprint="radial_p2.54mm" pcbX={-25.4} pcbY={2.54} schX={-11} schY={9} />
+    <Cap name="C4" capacitance="100nF" pcbX={-25.4} pcbY={2.54} schX={-11} schY={9} />
 
     <trace from=".ANT1 > .ANT" to=".C3 > .pin1" name="ANT" />
     <trace from=".C3 > .pin2" to="net.TANK" />
@@ -112,10 +116,10 @@ export default () => (
         1mV of selected RF becomes ~80mV — enough for the detector. */}
 
     <NpnTo92 name="Q1" pcbX={-19.05} pcbY={10.16} schX={-8} schY={9} />
-    <resistor name="R2" resistance="1Mohm" footprint="axial_p10.16mm" pcbX={-22.86} pcbY={26.67} schX={-8} schY={12} />
-    <resistor name="R3" resistance="470kohm" footprint="axial_p10.16mm" pcbX={-25.4} pcbY={19.05} schX={-9.5} schY={6} />
-    <resistor name="R4" resistance="2.2kohm" footprint="axial_p10.16mm" pcbX={-19.05} pcbY={-13.97} schX={-6.5} schY={6} />
-    <capacitor name="C5" capacitance="100nF" footprint="radial_p2.54mm" pcbX={-12.7} pcbY={2.54} schX={-5.5} schY={9} />
+    <Res name="R2" resistance="1Mohm" pitch={10.16} pcbX={-22.86} pcbY={26.67} schX={-8} schY={12} />
+    <Res name="R3" resistance="470kohm" pitch={10.16} pcbX={-25.4} pcbY={19.05} schX={-9.5} schY={6} />
+    <Res name="R4" resistance="2.2kohm" pitch={10.16} pcbX={-19.05} pcbY={-13.97} schX={-6.5} schY={6} />
+    <Cap name="C5" capacitance="100nF" pcbX={-12.7} pcbY={2.54} schX={-5.5} schY={9} />
 
     <trace from=".C4 > .pin2" to=".Q1 > .base" name="RF_IN" />
     <trace from=".R2 > .pin1" to="net.V9" />
@@ -128,12 +132,12 @@ export default () => (
     <trace from=".Q1 > .emitter" to=".C5 > .pin1" />
 
     <NpnTo92 name="Q2" pcbX={-5.08} pcbY={10.16} schX={-2} schY={9} />
-    <resistor name="R5" resistance="220kohm" footprint="axial_p10.16mm" pcbX={-8.89} pcbY={26.67} schX={-2} schY={12} />
-    <resistor name="R6" resistance="47kohm" footprint="axial_p10.16mm" pcbX={-15.24} pcbY={-5.08} schX={-3.5} schY={6} />
-    <resistor name="R7" resistance="820ohm" footprint="axial_p10.16mm" pcbX={-2.54} pcbY={-5.08} schX={-0.5} schY={6} />
-    <resistor name="R8" resistance="2.2kohm" footprint="axial_p10.16mm" pcbX={3.81} pcbY={26.67} schX={0} schY={12} />
-    <capacitor name="C6" capacitance="100nF" footprint="radial_p2.54mm" pcbX={1.27} pcbY={2.54} schX={1} schY={4} />
-    <capacitor name="C7" capacitance="100nF" footprint="radial_p2.54mm" pcbX={8.89} pcbY={2.54} schX={1.5} schY={11} />
+    <Res name="R5" resistance="220kohm" pitch={10.16} pcbX={-8.89} pcbY={26.67} schX={-2} schY={12} />
+    <Res name="R6" resistance="47kohm" pitch={10.16} pcbX={-15.24} pcbY={-5.08} schX={-3.5} schY={6} />
+    <Res name="R7" resistance="820ohm" pitch={10.16} pcbX={-2.54} pcbY={-5.08} schX={-0.5} schY={6} />
+    <Res name="R8" resistance="2.2kohm" pitch={10.16} pcbX={3.81} pcbY={26.67} schX={0} schY={12} />
+    <Cap name="C6" capacitance="100nF" pcbX={1.27} pcbY={2.54} schX={1} schY={4} />
+    <Cap name="C7" capacitance="100nF" pcbX={8.89} pcbY={2.54} schX={1.5} schY={11} />
 
     <trace from=".C5 > .pin2" to=".Q2 > .base" name="RF_AMP_IN" />
     <trace from=".R5 > .pin1" to="net.V9" />
@@ -150,44 +154,30 @@ export default () => (
 
     {/* ═══════════════════════ §4 DIODE DETECTOR + SIGNAL LED ═════════════
         The magic moment where radio becomes audio. C7 passes the amplified
-        RF into D1 but blocks DC, so the DET node rests at 0V with no
-        station. D1 conducts only on RF peaks and charges C8; RV1 (10k)
-        bleeds it off. The result across RV1: the RF's envelope = the
-        original audio. Time constant check: R·C = 10k × 4.7nF = 47µs —
-        fast enough to track ~3kHz audio, slow enough to bridge the 1µs
+        RF but blocks Q2's 7V collector DC. Because of that capacitor the
+        detector is a VOLTAGE DOUBLER: D2 (anode to GND) clamps DET_IN's
+        negative RF peaks to about −0.2V, so the waveform at DET_IN swings
+        from ~0 up to ~2× the RF peak, and D1 hands those peaks to C8.
+        D2 is not optional: it is the DC return path. Without it D1 would
+        charge C7 on the first few peaks and then stop conducting, because
+        no DC can flow through C7 into RV1 — DET would sit near 0V (a
+        simulation of the single-diode version gives < 90 mV at ANY signal
+        level, and the signal LED never lights).
+        C8 + RV1 (10k) form the envelope filter: R·C = 10k × 4.7nF = 47µs —
+        fast enough to track ~3kHz audio, slow enough to bridge the ~1.2µs
         RF cycles. (That compromise is a whole page in the tutorial.)
         Q3 + LED2 + R9 watch the DET node: strong carrier → DET jumps to
         a volt or more → LED glows. A visual "you found a station!". */}
 
-    <diode name="D1" footprint="axial_p10.16mm" pcbX={6.35} pcbY={10.16} schX={5} schY={9} />
-    <capacitor name="C8" capacitance="4.7nF" footprint="radial_p2.54mm" pcbX={15.24} pcbY={2.54} schX={7} schY={11} />
-    <potentiometer
-      name="RV1"
-      maxResistance="10k"
-      pinVariant="three_pin"
-      footprint={
-        <footprint>
-          <platedhole portHints={["pin1"]} pcbX={-2.54} pcbY={0} holeDiameter={1.2} outerDiameter={2.1} shape="circle" />
-          <platedhole portHints={["pin2"]} pcbX={0} pcbY={0} holeDiameter={1.2} outerDiameter={2.1} shape="circle" />
-          <platedhole portHints={["pin3"]} pcbX={2.54} pcbY={0} holeDiameter={1.2} outerDiameter={2.1} shape="circle" />
-          <silkscreenpath
-            route={[
-              { x: -4.2, y: -2.2 },
-              { x: 4.2, y: -2.2 },
-              { x: 4.2, y: 2.2 },
-              { x: -4.2, y: 2.2 },
-              { x: -4.2, y: -2.2 },
-            ]}
-          />
-        </footprint>
-      }
-      pcbX={11.43}
-      pcbY={-13.97}
-      schX={7}
-      schY={5}
-    />
+    <AxialDiode name="D1" pitch={10.16} pcbX={6.35} pcbY={10.16} schX={5} schY={9} />
+    <AxialDiode name="D2" pitch={10.16} pcbX={6.35} pcbY={15.24} pcbRotation={180} schX={3.5} schY={7} />
+    <Cap name="C8" capacitance="4.7nF" pcbX={15.24} pcbY={2.54} schX={7} schY={11} />
+    <VolumePot name="RV1" pcbX={11.43} pcbY={-13.97} schX={7} schY={5} />
 
-    <trace from=".C7 > .pin2" to=".D1 > .anode" name="DET_IN" />
+    <trace from=".C7 > .pin2" to="net.DET_IN" />
+    <trace from=".D1 > .anode" to="net.DET_IN" />
+    <trace from=".D2 > .cathode" to="net.DET_IN" />
+    <trace from=".D2 > .anode" to="net.GND" />
     <trace from=".D1 > .cathode" to="net.DET" />
     <trace from=".RV1 > .pin1" to="net.DET" />
     <trace from=".C8 > .pin1" to="net.DET" />
@@ -195,9 +185,9 @@ export default () => (
     <trace from=".RV1 > .pin3" to="net.GND" />
 
     <NpnTo92 name="Q3" pcbX={21.59} pcbY={10.16} schX={10} schY={13} />
-    <resistor name="R9" resistance="47kohm" footprint="axial_p10.16mm" pcbX={10.16} pcbY={19.05} schX={8} schY={14} />
-    <resistor name="R10" resistance="1kohm" footprint="axial_p10.16mm" pcbX={17.78} pcbY={26.67} schX={10} schY={17} />
-    <led name="LED2" color="yellow" footprint="radial_p2.54mm" pcbX={25.4} pcbY={19.05} schX={12} schY={17} />
+    <Res name="R9" resistance="47kohm" pitch={10.16} pcbX={10.16} pcbY={19.05} schX={8} schY={14} />
+    <Res name="R10" resistance="1kohm" pitch={10.16} pcbX={17.78} pcbY={26.67} schX={10} schY={17} />
+    <Led5mm name="LED2" color="yellow" pcbX={25.4} pcbY={19.05} schX={12} schY={17} />
 
     <trace from=".R9 > .pin1" to="net.DET" />
     <trace from=".R9 > .pin2" to=".Q3 > .base" />
@@ -215,15 +205,15 @@ export default () => (
         into a speaker. C13 couples OUT to the 8Ω speaker; SPK pads also
         fit headphones (they'll be loud!). */}
 
-    <capacitor name="C9" capacitance="10uF" footprint="radial_p2.54mm" pcbX={25.4} pcbY={-5.08} schX={9} schY={5} />
+    <ECap name="C9" capacitance="10uF" pitch={2.54} pcbX={25.4} pcbY={-5.08} schX={9} schY={5} />
     <Lm386 name="U1" pcbX={34.29} pcbY={2.54} schX={12} schY={2} />
-    <PowerSwitch name="SW2" pcbX={44.45} pcbY={19.05} schX={15} schY={8} />
-    <capacitor name="C11" capacitance="10uF" footprint="radial_p2.54mm" pcbX={43.18} pcbY={15.24} schX={15} schY={5.5} />
-    <capacitor name="C10" capacitance="100nF" footprint="radial_p2.54mm" pcbX={44.45} pcbY={1.27} schX={15.5} schY={3} />
-    <capacitor name="C12" capacitance="100nF" footprint="radial_p2.54mm" pcbX={44.45} pcbY={8.89} schX={13.5} schY={6} />
-    <capacitor name="C13" capacitance="220uF" footprint="radial_p5mm" pcbX={41.91} pcbY={-11.43} schX={16} schY={-1} />
-    <resistor name="R11" resistance="10ohm" footprint="axial_p10.16mm" pcbX={29.21} pcbY={-13.97} schX={13} schY={-3} />
-    <capacitor name="C14" capacitance="47nF" footprint="radial_p2.54mm" pcbX={19.05} pcbY={-13.97} schX={11} schY={-3} />
+    <PowerSwitch name="SW2" pcbX={44.45} pcbY={20.32} schX={15} schY={8} />
+    <ECap name="C11" capacitance="10uF" pitch={2.54} pcbX={43.18} pcbY={15.24} schX={15} schY={5.5} />
+    <Cap name="C10" capacitance="100nF" pcbX={44.45} pcbY={1.27} schX={15.5} schY={3} />
+    <Cap name="C12" capacitance="100nF" pcbX={44.45} pcbY={8.89} schX={13.5} schY={6} />
+    <ECap name="C13" capacitance="220uF" pitch={5} pcbX={41.91} pcbY={-11.43} schX={16} schY={-1} />
+    <Res name="R11" resistance="10ohm" pitch={10.16} pcbX={29.21} pcbY={-13.97} schX={13} schY={-3} />
+    <Cap name="C14" capacitance="47nF" pcbX={19.05} pcbY={-13.97} schX={11} schY={-3} />
     <SpeakerTerm name="SPK1" pcbX={43.18} pcbY={-24.13} schX={16.5} schY={-5} />
 
     <trace from=".RV1 > .pin2" to=".C9 > .pin1" name="AUD" />
@@ -253,9 +243,11 @@ export default () => (
     <silkscreentext text="TUNE" pcbX={-36.83} pcbY={29.21} fontSize="1.2mm" />
     <silkscreentext text="ANT WIRE" pcbX={-44.45} pcbY={23.5} fontSize="1.2mm" />
     <silkscreentext text="VOL" pcbX={11.43} pcbY={-17.5} fontSize="1.2mm" />
-    <silkscreentext text="GAIN 20/200" pcbX={41.91} pcbY={22.86} fontSize="1.2mm" />
+    <silkscreentext text="GAIN 20/200" pcbX={41.91} pcbY={24.13} fontSize="1.2mm" />
     <silkscreentext text="SPKR" pcbX={43.18} pcbY={-20.32} fontSize="1.2mm" />
-    <silkscreentext text="9V" pcbX={-38.1} pcbY={-20.32} fontSize="1.2mm" />
+    <silkscreentext text="+" pcbX={-43.18} pcbY={-20.32} fontSize="1.2mm" />
+    <silkscreentext text="9V" pcbX={-40.64} pcbY={-20.32} fontSize="1.2mm" />
+    <silkscreentext text="-" pcbX={-38.1} pcbY={-20.32} fontSize="1.2mm" />
     <silkscreentext text="ON" pcbX={-30.48} pcbY={-20.32} fontSize="1.2mm" />
     <silkscreentext text="BC547: FLAT FACE DOWN" pcbX={-6} pcbY={-8} fontSize="1.1mm" />
     <silkscreentext text="2N3904: ROTATE 180" pcbX={-6} pcbY={-10.5} fontSize="1.1mm" />

@@ -28,24 +28,47 @@
  */
 import "@tscircuit/core"
 import { Atmega32U4 } from "./lib/atmega32u4"
-import { UsbMicroB } from "./lib/usb-micro-b"
+import { UsbMicroB, USB_MICRO_B_EDGE_OFFSET_MM } from "./lib/usb-micro-b"
+import { FerriteBead } from "./lib/ferrite-bead"
+
+const BOARD_W = 72
 
 export default () => (
   <board
-    width="72mm"
+    width={`${BOARD_W}mm`}
     height="50mm"
     name="uNode32U4"
     // Layers: 2 (top + bottom). tscircuit's default; matches JLCPCB's
     // cheapest 2-layer offering.
+    //
+    // MANUFACTURING RULES. tscircuit's defaults are a fab's ABSOLUTE
+    // minimums (0.10 mm trace/space, 0.20 mm-drill / 0.30 mm vias with a
+    // 0.05 mm annular ring). This board is routed to standard 2-layer
+    // rules with margin instead: 0.15 mm (6 mil) minimum trace width,
+    // ≥ 0.115 mm copper clearance (JLCPCB/PCBWay standard minimum is
+    // 0.10 mm), 0.15 mm via-to-pad clearance, and 0.30 mm-drill / 0.60 mm
+    // vias (0.15 mm annular ring). The DRC gate enforces all of these.
+    minTraceWidth="0.15mm"
+    minTraceToPadEdgeClearance="0.115mm"
+    minPadEdgeToPadEdgeClearance="0.115mm"
+    minViaEdgeToPadEdgeClearance="0.15mm"
+    minViaHoleDiameter="0.3mm"
+    minViaPadDiameter="0.6mm"
+    pcbStyle={{ viaHoleDiameter: "0.3mm", viaPadDiameter: "0.6mm" }}
   >
     {/* ══════════════════════════ §1 USB FRONT-END ══════════════════════════
         VBUS enters through a 500mA-hold PTC resettable fuse (F1) before it
         becomes the board's +5V rail (net.V5). D+/D− pass through 22Ω series
         resistors — the ATmega32U4 datasheet §2.2.8/9 mandates these: they
         damp reflections and limit inrush current through the chip's USB pads.
-        The USB shell tabs are soldered to GND for shielding. */}
+        The USB shell (4 through-hole legs + 4 SMD tabs) is soldered to GND
+        for shielding and mechanical strength.
+        J1 sits ON the board edge: its footprint origin is 2.75 mm inside the
+        edge so the receptacle overhangs it by 0.7 mm (Amphenol drawing) —
+        a micro-B plug's overmold can only seat if no board sticks out in
+        front of the receptacle. */}
 
-    <UsbMicroB name="J1" pcbX={-29.3} pcbY={0} schX={-16} schY={0} />
+    <UsbMicroB name="J1" pcbX={-BOARD_W / 2 + USB_MICRO_B_EDGE_OFFSET_MM} pcbY={0} schX={-16} schY={0} />
     {/* F1 sits BELOW the D+/D− pair on purpose: its V5 exit then runs
         under the USB lines to the bulk caps instead of crossing them. */}
     <fuse
@@ -53,7 +76,7 @@ export default () => (
       footprint="1206"
       currentRating="500mA"
       voltageRating="15V"
-      pcbX={-24}
+      pcbX={-27.95}
       pcbY={-2.2}
       schX={-10}
       schY={3}
@@ -68,6 +91,10 @@ export default () => (
     <trace from=".J1 > .GND" to="net.GND" width="0.5mm" />
     <trace from=".J1 > .SHIELD1" to="net.GND" />
     <trace from=".J1 > .SHIELD2" to="net.GND" />
+    <trace from=".J1 > .SHIELD3" to="net.GND" />
+    <trace from=".J1 > .SHIELD4" to="net.GND" />
+    <trace from=".J1 > .SHIELD5" to="net.GND" />
+    <trace from=".J1 > .SHIELD6" to="net.GND" />
     {/* The two sides of a series resistor are DIFFERENT nets — only the
         connector side carries the USB_DP net label. */}
     <trace from=".J1 > .DPLUS" to=".R1 > .left" name="USB_DP" />
@@ -85,52 +112,52 @@ export default () => (
 
     {/* ══════════════════════ §3 POWER INTEGRITY ═══════════════════════════
         A 32U4 board's #1 bring-up killer is sloppy decoupling. We follow the
-        datasheet app-circuit discipline:
-        • every VCC pin (14, 24, 34) gets its own 100nF ceramic right at the pad
+        datasheet app-circuit discipline (Fig. 21-3, Fig. 24-10):
+        • the two digital VCC pins (14, 34) each get their own 100nF ceramic
         • UVCC (pin 2, USB pad supply) gets 100nF
         • UCAP (pin 6, internal 3.3V regulator output) gets 1µF — §2.2.12
-        • AVCC (pin 44) is fed through a ferrite bead → clean analog supply,
-          with 100nF locally
+        • the TWO analog supply pins AVCC1 (24, ADC8-13 side) and AVCC2
+          (44, ADC0-7 side) are each fed through their own ferrite bead
+          (FB2, FB1) with 100nF at the pin. The datasheet's note under
+          Fig. 24-10 asks for "the same circuitry ... on the ADC8-ADC13
+          side" — tying pin 24 straight to +5V would also short out FB1's
+          filtering, because both pins feed the same analog domain.
         • AREF (pin 42) gets 100nF (only matters if you use external AREF,
           but it costs nothing)
-        • 2×10µF bulk at the power entry absorb USB inrush */}
-    {/* Placement discipline: one decoupler ~2-3mm from the pin it serves,
-        pin facing its pad. Each cap's pin1 is its V5/AVCC side.
-        C3→VCC1 (bottom-left), C4→VCC2 (right), C5→VCC3 (top),
-        C8→UVCC (top-left), C7 is the UCAP 1µF, C6 rides the ferrite-bead
-        AVCC island, C9 bypasses AREF. */}
+        • bulk at the power entry: 4.7µF + 1µF. USB 2.0 (§7.2.4.1) limits a
+          device to 10µF on VBUS at attach — the whole V5 rail (bulk + every
+          100nF) totals ≈ 6.4µF, so this board needs no soft-start circuit. */}
+    {/* Placement discipline: one decoupler as close to the pin it serves as
+        the fan-out allows, pin facing its pad. Each cap's pin1 is its
+        supply side. C3→VCC1 (bottom-left), C5→VCC2 (top), C4→AVCC1
+        (right, behind FB2), C6→AVCC2 (top-left, behind FB1), C8→UVCC
+        (top-left), C7 is the UCAP 1µF, C9 bypasses AREF. */}
     {/* Bulk caps stand vertical — pin1 (V5) up, pin2 (GND) down — so the
         VBUS→V5 arrival from above and the GND return from the connector
         never have to cross each other at the power entry. */}
-    <capacitor name="C1" capacitance="10uF" footprint="0805" pcbX={-19.5} pcbY={-3.5} pcbRotation={270} schX={-10} schY={-4} />
-    <capacitor name="C2" capacitance="10uF" footprint="0805" pcbX={-15} pcbY={-4.5} pcbRotation={270} schX={-10} schY={-5.5} />
+    <capacitor name="C1" capacitance="4.7uF" footprint="0805" pcbX={-23.45} pcbY={-3.5} pcbRotation={270} schX={-10} schY={-4} />
+    <capacitor name="C2" capacitance="1uF" footprint="0805" pcbX={-18.95} pcbY={-4.5} pcbRotation={270} schX={-10} schY={-5.5} />
     <capacitor name="C3" capacitance="100nF" footprint="0603" pcbX={-8.5} pcbY={-10.5} pcbRotation={90} schX={-4} schY={-6} />
-    {/* C4 tucks under the chip's bottom-right corner, vertical, pin1 (V5)
-        on top: the VCC2/GND2 escapes drop straight down to it and never
-        have to cross the right-edge signal corridor. */}
+    {/* C4 tucks under the chip's bottom-right corner, vertical, pin1
+        (AVCC1) on top: pin 24's escape drops straight down to it and never
+        has to cross the right-edge signal corridor. FB2 feeds it from the
+        right. */}
     <capacitor name="C4" capacitance="100nF" footprint="0603" pcbX={7.6} pcbY={-7.6} pcbRotation={270} schX={4} schY={-6} />
+    <FerriteBead name="FB2" pcbX={10.2} pcbY={-7.6} pcbRotation={270} schX={2} schY={-7} />
     {/* C5 sits right of the other top caps: its GND pin then exits right
         toward J3.GND (the only GND member on that side of the board) while
         V5 arrives from the left — opposite shoulders, no squeeze. */}
     <capacitor name="C5" capacitance="100nF" footprint="0603" pcbX={5} pcbY={9} pcbRotation={90} schX={4} schY={6} />
-    {/* C6 is vertical with pin1 (AVCC) UP: the ferrite bead feeds it from
+    {/* C6 is vertical with pin1 (AVCC2) UP: the ferrite bead feeds it from
         the side, and GND4's escape reaches the bottom GND pin without
-        wrapping past the AVCC pin. */}
+        wrapping past the AVCC2 pin. */}
     <capacitor name="C6" capacitance="100nF" footprint="0603" pcbX={-7} pcbY={9.4} pcbRotation={270} schX={-4} schY={6} />
     {/* C7 is rotated 180° so pin1 faces the MCU — the UCAP trace exits
         straight out of the pad, no detour around the cap body. */}
     <capacitor name="C7" capacitance="1uF" footprint="0603" pcbX={-13.5} pcbY={-2} pcbRotation={180} schX={-6} schY={-2.5} />
     <capacitor name="C8" capacitance="100nF" footprint="0603" pcbX={-11.5} pcbY={6} schX={-6} schY={4.5} />
     <capacitor name="C9" capacitance="100nF" footprint="0603" pcbX={-5} pcbY={9} pcbRotation={90} schX={0} schY={6.5} />
-    <inductor name="FB1" inductance="1uH" footprint="0603" pcbX={-9.8} pcbY={8.5} schX={-6} schY={7} />
-
-    {/* VCC2↔VCC3 hand-routed up the body's x=2.6 lane — the autorouter's
-        version cuts diagonally through the ring and grazes SCL/MOSI. */}
-    <trace
-      from=".U1 > .VCC2"
-      to=".U1 > .VCC3"
-      pcbPath={[{ x: 4.6, y: -3.2 }, { x: 4.6, y: 5.64 }, ".U1 > .VCC3"]}
-    />
+    <FerriteBead name="FB1" pcbX={-9.8} pcbY={8.5} schX={-6} schY={7} />
 
     {/* GND3↔GND4 hand-routed UNDER the top pad row (y=4.5 lane, below
         every pad tip at y=4.9): the autorouter sends this edge straight
@@ -146,14 +173,13 @@ export default () => (
     <trace from=".U1 > .UVCC" to="net.V5" />
     <trace from=".U1 > .VCC1" to="net.V5" />
     <trace from=".U1 > .VCC2" to="net.V5" />
-    <trace from=".U1 > .VCC3" to="net.V5" />
     <trace from=".U1 > .UGND" to="net.GND" />
-    <trace from=".U1 > .GND1" to="net.GND" width="0.2mm" />
+    <trace from=".U1 > .GND1" to="net.GND" width="0.25mm" />
     <trace from=".U1 > .GND2" to="net.GND" />
     <trace from=".U1 > .GND3" to="net.GND" />
     <trace from=".U1 > .GND4" to="net.GND" />
 
-    {/* Bulk + per-pin decouplers (each cap spans V5↔GND, placed at its pin) */}
+    {/* Bulk + per-pin decouplers (each cap spans supply↔GND, at its pin) */}
     <trace from=".C1 > .pin1" to="net.V5" />
     <trace from=".C1 > .pin2" to="net.GND" />
     <trace from=".C2 > .pin1" to="net.V5" />
@@ -161,6 +187,7 @@ export default () => (
     <trace
       from=".U1 > .VCC1"
       to=".C3 > .pin1"
+      width="0.25mm"
       maxLength="15mm"
       pcbPath={[{ x: -2.4, y: -6.9 }, { x: -7.5, y: -6.9 }, { x: -7.5, y: -11.3 }, ".C3 > .pin1"]}
     />
@@ -171,11 +198,10 @@ export default () => (
     <trace
       from=".U1 > .GND1"
       to=".C3 > .pin2"
+      width="0.25mm"
       maxLength="15mm"
       pcbPath={[{ x: -1.6, y: -9.7 }, { x: -6.5, y: -9.7 }, ".C3 > .pin2"]}
     />
-    <trace from=".C4 > .pin1" to="net.V5" />
-    <trace from=".C4 > .pin2" to="net.GND" />
     <trace from=".C5 > .pin1" to="net.V5" />
     <trace from=".C5 > .pin2" to="net.GND" />
 
@@ -183,12 +209,19 @@ export default () => (
     <trace from=".U1 > .UCAP" to=".C7 > .pin1" name="UCAP" />
     <trace from=".C7 > .pin2" to="net.GND" />
 
-    {/* AVCC: +5V → ferrite bead → AVCC, with local 100nF */}
-    <trace from=".FB1 > .pin1" to="net.V5" />
-    <trace from=".FB1 > .pin2" to="net.AVCC" />
-    <trace from=".U1 > .AVCC" to="net.AVCC" />
-    <trace from=".C6 > .pin1" to="net.AVCC" />
+    {/* AVCC2 (pin 44): +5V → FB1 → AVCC2, with local 100nF (C6) */}
+    <trace from=".FB1 > .IN" to="net.V5" />
+    <trace from=".FB1 > .OUT" to="net.AVCC2" />
+    <trace from=".U1 > .AVCC2" to="net.AVCC2" />
+    <trace from=".C6 > .pin1" to="net.AVCC2" />
     <trace from=".C6 > .pin2" to="net.GND" />
+
+    {/* AVCC1 (pin 24): +5V → FB2 → AVCC1, with local 100nF (C4) */}
+    <trace from=".FB2 > .IN" to="net.V5" />
+    <trace from=".FB2 > .OUT" to="net.AVCC1" />
+    <trace from=".U1 > .AVCC1" to="net.AVCC1" />
+    <trace from=".C4 > .pin1" to="net.AVCC1" />
+    <trace from=".C4 > .pin2" to="net.GND" />
 
     {/* AREF bypass */}
     <trace from=".U1 > .AREF" to="net.AREF" />
@@ -245,11 +278,16 @@ export default () => (
         GND (SW1). tscircuit's pushbutton has 4 pins, internally connected
         in pairs (1=2, 3=4), so wiring pin1 + pin3 is enough.
 
-        BOOT (PE2 / pin 33 / #HWB): 10k pull-up keeps normal boot. Hold SW2
-        while pressing reset and the chip enters its bootloader *if* the
-        HWBE fuse is programmed (datasheet §27.5.3) — a dead-simple,
-        fuse-based recovery path. PE2 is also a GPIO (Arduino D-routed on
-        the HWB header pin) so the button doubles as a user input. */}
+        BOOT (PE2 / pin 33 / #HWB): 10k pull-up keeps normal boot. With the
+        HWBE fuse PROGRAMMED, holding SW2 while releasing RESET forces the
+        boot-loader reset vector (datasheet §27.5.3, Fig. 27-3). That is
+        exactly the state of a FACTORY-FRESH ATmega32U4-AU: it ships with a
+        USB (DFU) bootloader and HWBE programmed (datasheet p.1, Table
+        28-3), so SW2+SW1 reach it with no ISP programmer at all.
+        After the Leonardo fuses are written (efuse 0xCB → HWBE
+        UNprogrammed, hfuse 0xD8 → BOOTRST programmed) the chip enters the
+        Caterina bootloader on EVERY reset anyway, so SW2 is then simply a
+        user button on PE2 (header pin HWB). */}
     <resistor name="R3" resistance="10kohm" footprint="0603" pcbX={-19.5} pcbY={2.3} schX={10} schY={-3} />
     <pushbutton name="SW1" footprint="pushbutton" pcbX={-19.5} pcbY={10} schX={14} schY={-3} />
     <resistor name="R4" resistance="10kohm" footprint="0603" pcbX={-24.5} pcbY={-16.5} schX={10} schY={-6} />

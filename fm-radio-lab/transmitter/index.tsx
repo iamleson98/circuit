@@ -15,33 +15,35 @@
  *                                  └ TUNE trimmer slides 88-108MHz ┘
  *
  *  WHERE THE "FM" HAPPENS (the whole point of this project)
- *  Q2 is a common-base Colpitts oscillator — the same tank circuit L1 ∥
- *  (TRIM1+C10) ∥ (C9 series C8) rings at ~100 MHz. Your voice arrives at
- *  Q2's base and wiggles the transistor's emitter current, and the
- *  emitter-base junction capacitance WIGGLES WITH IT. That junction
- *  capacitance is physically part of the tank, so the carrier frequency
- *  wiggles too — voltage changes the capacitance, capacitance changes the
- *  frequency, and speech becomes FREQUENCY MODULATION. This is exactly how
- *  the classic "FM bug" transmitters work, and seeing it on a schematic you
- *  built yourself is the fastest way to understand FM.
+ *  Q2 is a common-base Colpitts oscillator — the tank L1 ∥ TRIM1 ∥
+ *  (C9 series C8) rings at ~100 MHz. Across that tank sits D1, a diode
+ *  used as a VARACTOR: reverse-biased, its junction capacitance shrinks as
+ *  the reverse voltage grows. Your voice rides on D1's bias, D1's
+ *  capacitance wiggles, the tank's resonance wiggles — speech becomes
+ *  FREQUENCY MODULATION. (Classic "FM bugs" modulate the oscillator
+ *  transistor's own junction instead; simulated with real transistor
+ *  models that effect is erratic — 0.04 to 5 kHz/mV and even changing sign
+ *  with transistor type and tuning — so this board uses a dedicated
+ *  varactor whose behaviour you can predict.)
  *
  *  WHY TWO STAGES (each is one real broadcast concept, shrunk)
- *  · Q1 amplifies the ~20mV microphone signal to ~100-200mV — enough to
- *    swing Q2's junction capacitance through a useful range (full FM
- *    broadcast deviation is ±75 kHz; this design lands in the tens of kHz,
- *    loud and clear on any radio).
- *  · Q2 is the oscillator: L1 (a 4-turn hand-wound air coil) resonates
- *    with ~25pF at ~100MHz. The trimmer TRIM1 (5-30pF, padded by C10)
- *    slides the frequency across the band. C9/C8 form the feedback
- *    divider that keeps the oscillation running.
+ *  · Q1 amplifies the few-mV microphone signal ~18× — enough to swing the
+ *    varactor through a useful range. The DEV trimmer sets the deviation:
+ *    broadcast FM uses up to ±75 kHz, and §15.239 requires the emission to
+ *    stay inside a 200 kHz band, so turn DEV up only until speech is loud
+ *    and clean on a normal FM radio.
+ *  · Q2 is the oscillator: L1 (a 3-turn hand-wound air coil, ~56nH)
+ *    resonates with ~45pF at ~100MHz. The trimmer TRIM1 (5-30pF, directly
+ *    across the tank) slides the frequency across the band. C9/C8 form the
+ *    feedback divider that keeps the oscillation running.
  *
  *  PROVEN, NOT HOPED
- *  calc/sim_fm.mjs integrates this exact oscillator (RK4, Ebers-Moll
- *  transistor with a voltage-dependent junction capacitance — the FM
- *  mechanism itself): it starts from a 1mV seed, lands within a few % of
- *  the predicted frequency, tunes monotonically across the band, and the
- *  junction-capacitance sweep measures the real kHz-per-millivolt FM
- *  sensitivity. calc/circuit_math.mjs re-derives every bias point.
+ *  calc/spice/ holds standard SPICE decks of this board (ngspice/LTspice)
+ *  and calc/sim_fm.mjs re-runs the checks with a bundled circuit simulator
+ *  and vendor transistor/diode models: start-up for 2N2222A and BC547B,
+ *  coil Q 50-150 and 2-5 nH lead inductance; ≈81-104 MHz tuning (never into
+ *  the aviation band); tank swing ≤ 0.8 V; varactor FM of one predictable
+ *  sign; and a radiated-power estimate ≈14 dB under the licence-free limit.
  *
  *  HOW TO READ THIS FILE
  *  One flat netlist organized like the schematic pages of a real radio:
@@ -64,11 +66,18 @@ import {
   ElectretMic,
   AuxJack,
   AntennaPad,
+  VolumePot,
   NpnTo92,
+  FAB_RULES,
+  Cap,
+  ECap,
+  Led5mm,
+  Res,
+  AxialDiode,
 } from "../lib/parts"
 
 export default () => (
-  <board width="91.44mm" height="55.88mm" name="fm-tx">
+  <board width="91.44mm" height="55.88mm" name="fm-tx" {...FAB_RULES}>
     {/* ═══════════════════════ §1 POWER ENTRY ═════════════════════════════
         9V battery → slide switch → the V9 rail. C1 (47µF) is the bulk
         reservoir; C2 (100nF) is the fast local decoupler. LED1 + R1 give a
@@ -77,12 +86,12 @@ export default () => (
         oscillator frequency ("supply pushing") — good decoupling is
         literally a frequency-stability part. */}
 
-    <Battery9V name="BT1" pcbX={-38.1} pcbY={-22.86} schX={-14} schY={-7} />
+    <Battery9V name="BT1" pcbX={-40.64} pcbY={-22.86} schX={-14} schY={-7} />
     <PowerSwitch name="SW1" pcbX={-30.48} pcbY={-22.86} schX={-10} schY={-7} />
-    <capacitor name="C1" capacitance="47uF" footprint="radial_p5mm" pcbX={-38.1} pcbY={-13.97} schX={-12} schY={-3} />
-    <capacitor name="C2" capacitance="100nF" footprint="radial_p2.54mm" pcbX={-29.21} pcbY={-15.24} schX={-9} schY={-3} />
-    <led name="LED1" color="green" footprint="radial_p2.54mm" pcbX={-21.59} pcbY={-22.86} schX={-6} schY={-6} />
-    <resistor name="R1" resistance="2.2kohm" footprint="axial_p10.16mm" pcbX={-11.43} pcbY={-22.86} schX={-4} schY={-6} />
+    <ECap name="C1" capacitance="47uF" pitch={5} pcbX={-38.1} pcbY={-13.97} schX={-12} schY={-3} />
+    <Cap name="C2" capacitance="100nF" pcbX={-29.21} pcbY={-15.24} schX={-9} schY={-3} />
+    <Led5mm name="LED1" color="green" pcbX={-21.59} pcbY={-22.86} schX={-6} schY={-6} />
+    <Res name="R1" resistance="2.2kohm" pitch={10.16} pcbX={-11.43} pcbY={-22.86} schX={-4} schY={-6} />
 
     <trace from=".BT1 > .pin1" to=".SW1 > .pin1" />
     <trace from=".SW1 > .pin2" to="net.V9" />
@@ -106,11 +115,11 @@ export default () => (
           uses it as the standard debugging signal. */}
 
     <ElectretMic name="MIC1" pcbX={-40.64} pcbY={10.16} schX={-16} schY={9} />
-    <resistor name="R2" resistance="10kohm" footprint="axial_p10.16mm" pcbX={-34.29} pcbY={21.59} schX={-14} schY={11} />
-    <capacitor name="C3" capacitance="100nF" footprint="radial_p2.54mm" pcbX={-27.94} pcbY={2.54} schX={-12} schY={9} />
+    <Res name="R2" resistance="10kohm" pitch={10.16} pcbX={-34.29} pcbY={21.59} schX={-14} schY={11} />
+    <Cap name="C3" capacitance="100nF" pcbX={-27.94} pcbY={2.54} schX={-12} schY={9} />
     <AuxJack name="AUX1" pcbX={-40.64} pcbY={-5.08} schX={-16} schY={4} />
-    <capacitor name="C4" capacitance="100nF" footprint="radial_p2.54mm" pcbX={-40.64} pcbY={0} schX={-14} schY={4} />
-    <resistor name="R3" resistance="47kohm" footprint="axial_p10.16mm" pcbX={-26.67} pcbY={-6.35} schX={-12} schY={6} />
+    <Cap name="C4" capacitance="100nF" pcbX={-40.64} pcbY={0} schX={-14} schY={4} />
+    <Res name="R3" resistance="47kohm" pitch={10.16} pcbX={-26.67} pcbY={-6.35} schX={-12} schY={6} />
 
     <trace from=".MIC1 > .MIC_P" to=".R2 > .pin2" name="MIC" />
     <trace from=".MIC1 > .MIC_P" to=".C3 > .pin1" />
@@ -125,19 +134,17 @@ export default () => (
     {/* ═══════════════════════ §3 AUDIO PREAMP (Q1) ═══════════════════════
         A common-emitter stage: R4/R5 bias the base at ~1.6V, R6 is the
         collector load, R7+R8 set the emitter (and collector) current to
-        ~1.8mA. C5 shorts R8 at audio → the stage's gain becomes ≈
-        R_load/(R7 + r_e) ≈ 6× — deliberately MODEST, because the FM
-        oscillator only needs ~100mV of voice for a healthy swing (the sim
-        in calc/sim_fm.mjs measures the exact sensitivity). Shout and
-        you'll over-deviate: distorted but educational. */}
+        ~2mA. C5 shorts R8 at audio → the stage's gain becomes ≈
+        R_load/(R7 + r_e) ≈ 18×: a few mV of voice becomes ~100mV for the
+        varactor (§4b). The DEV trimmer then sets how much of it is used. */}
 
     <NpnTo92 name="Q1" pcbX={-13.97} pcbY={8.89} schX={-9} schY={9} />
-    <resistor name="R4" resistance="56kohm" footprint="axial_p10.16mm" pcbX={-8.89} pcbY={21.59} schX={-9} schY={12} />
-    <resistor name="R5" resistance="12kohm" footprint="axial_p10.16mm" pcbX={-19.05} pcbY={15.24} schX={-9} schY={6} />
-    <resistor name="R6" resistance="2.7kohm" footprint="axial_p10.16mm" pcbX={-31.75} pcbY={15.24} schX={-11.5} schY={9} />
-    <resistor name="R7" resistance="220ohm" footprint="axial_p10.16mm" pcbX={-6.35} pcbY={-5.08} schX={-7} schY={6} />
-    <resistor name="R8" resistance="330ohm" footprint="axial_p10.16mm" pcbX={-19.05} pcbY={-3.81} schX={-6} schY={4} />
-    <capacitor name="C5" capacitance="10uF" footprint="radial_p2.54mm" pcbX={-13.97} pcbY={-11.43} schX={-4.5} schY={2} />
+    <Res name="R4" resistance="56kohm" pitch={10.16} pcbX={-8.89} pcbY={21.59} schX={-9} schY={12} />
+    <Res name="R5" resistance="12kohm" pitch={10.16} pcbX={-19.05} pcbY={15.24} schX={-9} schY={6} />
+    <Res name="R6" resistance="2.7kohm" pitch={10.16} pcbX={-31.75} pcbY={15.24} schX={-11.5} schY={9} />
+    <Res name="R7" resistance="100ohm" pitch={10.16} pcbX={-6.35} pcbY={-5.08} schX={-7} schY={6} />
+    <Res name="R8" resistance="330ohm" pitch={10.16} pcbX={-19.05} pcbY={-3.81} schX={-6} schY={4} />
+    <ECap name="C5" capacitance="10uF" pitch={2.54} pcbX={-13.97} pcbY={-11.43} schX={-4.5} schY={2} />
 
     <trace from=".R4 > .pin1" to="net.V9" />
     <trace from=".R4 > .pin2" to=".Q1 > .base" />
@@ -158,29 +165,27 @@ export default () => (
         same core — that symmetry is the big lesson).
         · R9/R10 bias the base at ~1.9V (stiff divider: the carrier must
           not wander). C7 (470pF) grounds the base at RF — Xc ≈ 3Ω at
-          100MHz — while leaving the audio from C6 free to reach the
-          junction. That audio-vs-RF split IS the FM modulation port.
+          100MHz. No audio goes to the base: FM is done by the varactor.
         · L1 hangs from the collector to V9 (the coil IS the DC feed —
           ~0Ω at DC, ~60Ω of reactance at 100MHz) and the tank capacitance
-          to ground is C9 in series with C8, plus TRIM1 padded by C10,
-          plus the transistor's own C_ob ≈ 8pF (2N2222A datasheet).
+          to ground is C9 in series with C8, plus TRIM1, the C17 padder
+          and the varactor D1 (§5), plus the transistor's own C_ob
+          (≈ 8pF max for a 2N2222A).
         · C9 (22pF) / C8 (47pF) are also the feedback divider: the emitter
           sits at their midpoint, feeding a slice of the collector swing
-          back in phase. The pair presents a NEGATIVE RESISTANCE
-          −gm/(ω²·C9·C8) ≈ −600Ω against the tank's ~+2kΩ — starts
-          reliably, self-limits to a steady carrier.
-        · R11 sets the emitter current (~3mA → gm ≈ 120mS). */}
+          back in phase.
+        · R11 sets the emitter current (~1.7mA → gm ≈ 65mS): ample loop
+          gain to start with a loaded tank (§5) for 2N2222A or BC547/548. */}
 
     <NpnTo92 name="Q2" pcbX={10.16} pcbY={8.89} schX={1} schY={9} />
-    <capacitor name="C6" capacitance="100nF" footprint="radial_p2.54mm" pcbX={1.27} pcbY={2.54} schX={-4} schY={11} />
-    <resistor name="R9" resistance="15kohm" footprint="axial_p10.16mm" pcbX={3.81} pcbY={21.59} schX={1} schY={12} />
-    <resistor name="R10" resistance="3.9kohm" footprint="axial_p10.16mm" pcbX={-2.54} pcbY={15.24} schX={1} schY={6} />
-    <capacitor name="C7" capacitance="470pF" footprint="radial_p2.54mm" pcbX={7.62} pcbY={2.54} schX={3} schY={3.5} />
-    <resistor name="R11" resistance="390ohm" footprint="axial_p10.16mm" pcbX={16.51} pcbY={-4.45} schX={3} schY={6} />
-    <capacitor name="C8" capacitance="47pF" footprint="radial_p2.54mm" pcbX={16.51} pcbY={2.54} schX={4.5} schY={6} />
-    <capacitor name="C9" capacitance="22pF" footprint="radial_p2.54mm" pcbX={22.86} pcbY={2.54} schX={3.5} schY={10} />
+    <Res name="R9" resistance="15kohm" pitch={10.16} pcbX={3.81} pcbY={21.59} schX={1} schY={12} />
+    <Res name="R10" resistance="3.9kohm" pitch={10.16} pcbX={-2.54} pcbY={15.24} schX={1} schY={6} />
+    <Cap name="C7" capacitance="470pF" pcbX={7.62} pcbY={2.54} schX={3} schY={3.5} />
+    <Res name="R11" resistance="680ohm" pitch={10.16} pcbX={16.51} pcbY={-4.45} schX={3} schY={6} />
+    <Cap name="C8" capacitance="47pF" pcbX={16.51} pcbY={2.54} schX={4.5} schY={6} />
+    <Cap name="C9" capacitance="22pF" pcbX={22.86} pcbY={2.54} schX={3.5} schY={10} />
 
-    <trace from=".C6 > .pin2" to=".Q2 > .base" name="OSCB" />
+    <trace from=".Q2 > .base" to="net.OSCB" />
     <trace from=".R9 > .pin1" to="net.V9" />
     <trace from=".R9 > .pin2" to=".Q2 > .base" />
     <trace from=".R10 > .pin1" to=".Q2 > .base" />
@@ -195,22 +200,84 @@ export default () => (
     <trace from=".C9 > .pin1" to="net.TANK" />
     <trace from=".C9 > .pin2" to=".Q2 > .emitter" />
 
+    {/* ═══════════════════════ §4b THE VARACTOR — WHERE FM IS BORN ════════
+        D1 (a 1N4148 used as a varactor) sits across the tank: cathode on
+        TANK (≈9V DC through L1), anode on net.VAR, which R12/R13 hold at
+        ≈7.85V → ~1.15V of reverse bias, comfortably more than the ≤0.8V
+        RF peak, so D1 never conducts. C14 (470pF) is D1's RF ground
+        (≈3Ω at 100 MHz); the resistance it sees for audio (R14 + the DEV
+        pot, ∥ the bias divider) is ≤ 3.5k, so its corner sits above 90 kHz
+        and speech passes untouched. Voice from Q1 → C6 → DEV
+        trimmer → R14 → C16 rides on that bias (C16 blocks DC: without it
+        the lower half of the DEV pot would drag VAR down to ~1.9V and
+        reverse-bias D1 by 7V, where it is far less sensitive): more
+        reverse voltage = less capacitance = higher frequency. Simulated
+        sensitivity 0.13-0.59 kHz/mV in band (it spreads with the 1N4148's
+        capacitance and with TUNE); set DEV by ear — loud and clean on a
+        normal FM radio, no splatter onto neighbouring channels. A real
+        varactor (e.g. BB910-class) can replace D1 for more deviation per
+        mV. */}
+
+    <Cap name="C6" capacitance="100nF" pcbX={1.27} pcbY={2.54} schX={-4} schY={11} />
+    <VolumePot name="RV1" pcbX={5.08} pcbY={-20.32} schX={-2} schY={14} />
+    <Res name="R14" resistance="1kohm" pitch={10.16} pcbX={17.78} pcbY={-25.4} schX={1} schY={14} />
+    <Cap name="C16" capacitance="100nF" pcbX={27.94} pcbY={-22.86} schX={2} schY={15.5} />
+    <Res name="R12" resistance="22kohm" pitch={10.16} pcbX={17.78} pcbY={-15.24} schX={3} schY={15} />
+    <Res name="R13" resistance="150kohm" pitch={10.16} pcbX={17.78} pcbY={-20.32} schX={4.5} schY={15} />
+    <Cap name="C14" capacitance="470pF" pcbX={25.4} pcbY={-10.16} schX={5.5} schY={14} />
+    <AxialDiode name="D1" pitch={7.62} pcbX={27.94} pcbY={-5.08} schX={6.5} schY={13} />
+
+    <trace from=".C6 > .pin2" to=".RV1 > .pin1" name="AF_DEV" />
+    <trace from=".RV1 > .pin3" to="net.GND" />
+    <trace from=".RV1 > .pin2" to=".R14 > .pin1" />
+    <trace from=".R14 > .pin2" to=".C16 > .pin1" />
+    <trace from=".C16 > .pin2" to="net.VAR" />
+    <trace from=".R12 > .pin1" to="net.V9" />
+    <trace from=".R12 > .pin2" to="net.VAR" />
+    <trace from=".R13 > .pin1" to="net.VAR" />
+    <trace from=".R13 > .pin2" to="net.GND" />
+    <trace from=".C14 > .pin1" to="net.VAR" />
+    <trace from=".C14 > .pin2" to="net.GND" />
+    <trace from=".D1 > .anode" to="net.VAR" />
+    <trace from=".D1 > .cathode" to="net.TANK" />
+
     {/* ═══════════════════════ §5 THE TANK — YOUR TUNING KNOB ═════════════
-        L1 is the 3-turn air coil you wind yourself (≈0.06µH). It resonates
-        with: C9 series C8 (8.2pF) + transistor strays (≈8-13pF) + TRIM1
-        (5-30pF, directly across the tank — the classic FM-bug arrangement:
-        a ~35MHz-wide window that always swallows the whole FM band, with
-        the coil-stretch trick as the band-edge rescue).
+        L1 is the 3-turn air coil you wind yourself (≈0.056µH). It resonates
+        with: C9 series C8 (15pF) + transistor strays + D1 (~1-3pF) +
+        C17 (12pF padder) + TRIM1 (5-30pF, directly across the tank):
+        simulated ≈81-101 MHz (2N2222A) / 82-104 MHz (BC547B), across
+        the 1N4148's capacitance spread and 2-5nH of lead inductance. C17
+        is there to keep the TOP of the range below 108 MHz: without it
+        the trimmer reaches 115-120 MHz, in the aviation band (108-137
+        MHz), where transmitting is dangerous as well as illegal (6.8pF
+        still let a BC547B with a low-capacitance 1N4148 reach 110 MHz;
+        10pF left under 1% of margin with short leads). Stretch the coil
+        (fewer nH) to move the window up if you need the top of the FM
+        band — and always check on a normal FM radio that you are below
+        108 MHz.
+        R15 (330Ω) deliberately LOADS the tank. An undamped oscillator
+        grows until the transistor saturates — ~9V peak on this tank,
+        whatever the coil's Q — and a 3-turn coil carrying that much RF
+        current is itself a small loop antenna radiating far above the
+        licence-free limit. With R15 the swing is pinned at ~0.55-0.85V
+        for any coil Q (50-150) or transistor, and the coil's own radiation
+        drops ~20 dB.
         C11 (100nF) + C12 (1nF) ground the V9 rail right at the coil so
         the tank sees a solid RF ground — they are part of the resonator. */}
 
     <AirCoil name="L1" pcbX={36.83} pcbY={2.54} schX={5} schY={11} />
     <TrimmerCap name="TRIM1" pcbX={30.48} pcbY={15.24} schX={5} schY={7} />
-    <capacitor name="C11" capacitance="100nF" footprint="radial_p2.54mm" pcbX={33.02} pcbY={21.59} schX={7.5} schY={12} />
-    <capacitor name="C12" capacitance="1nF" footprint="radial_p2.54mm" pcbX={38.1} pcbY={15.24} schX={7.5} schY={10.5} />
+    <Cap name="C11" capacitance="100nF" pcbX={33.02} pcbY={21.59} schX={7.5} schY={12} />
+    <Cap name="C12" capacitance="1nF" pcbX={38.1} pcbY={15.24} schX={7.5} schY={10.5} />
+    <Res name="R15" resistance="330ohm" pitch={7.62} pcbX={35.56} pcbY={-2.54} schX={6} schY={11.5} />
+    <Cap name="C17" capacitance="12pF" pcbX={22.86} pcbY={20.32} schX={6.5} schY={7} />
 
     <trace from=".L1 > .pin1" to="net.TANK" />
     <trace from=".L1 > .pin2" to="net.V9" />
+    <trace from=".R15 > .pin1" to="net.TANK" />
+    <trace from=".R15 > .pin2" to="net.V9" />
+    <trace from=".C17 > .pin1" to="net.TANK" />
+    <trace from=".C17 > .pin2" to="net.GND" />
     <trace from=".TRIM1 > .A" to="net.TANK" />
     <trace from=".TRIM1 > .B" to="net.GND" />
     <trace from=".C11 > .pin1" to="net.V9" />
@@ -219,18 +286,25 @@ export default () => (
     <trace from=".C12 > .pin2" to="net.GND" />
 
     {/* ═══════════════════════ §6 ANTENNA ═════════════════════════════════
-        At ~100 MHz the wavelength is ~3m, so 75cm of wire is a proper
-        quarter-wave monopole. C13 (3.3pF) feeds it a small, controlled
-        sip of the carrier — enough to cross a house, small enough to stay
-        in license-exempt territory (see tutorial · Regulations: field
-        strength limits like FCC §15.239's 250µV/m at 3m). Start with
-        30cm of wire; lengthen only if you need more range. */}
+        FCC §15.239 allows only 250µV/m at 3m in 88-108 MHz — an EIRP of
+        about 19 nW (−47 dBm). The earlier version (3.3pF straight from a
+        9V tank into 30-75cm of wire) simulated at −8 to +8 dBm: 40-55 dB
+        too strong. Now C13 (1pF) and C15 (100pF) form a 1:100 capacitive
+        divider, so the ANT pad sees ~1% of the (already damped) tank
+        voltage, and the wire is kept short: ≤ 20cm. Simulated total
+        radiation (coil + wire) is ≥ 14 dB under the limit — a few metres
+        of range to the FM-RX or any FM radio. Only a field-strength
+        measurement can confirm compliance; don't lengthen the wire. */}
 
-    <capacitor name="C13" capacitance="3.3pF" footprint="radial_p2.54mm" pcbX={36.83} pcbY={-5.08} schX={8} schY={9} />
+    <Cap name="C13" capacitance="1pF" pcbX={36.83} pcbY={-7.62} schX={8} schY={9} />
+    <Cap name="C15" capacitance="100pF" pcbX={39.37} pcbY={-12.7} schX={9} schY={7.5} />
     <AntennaPad name="ANT1" pcbX={41.91} pcbY={-5.08} schX={10} schY={9} />
 
     <trace from=".C13 > .pin1" to="net.TANK" />
-    <trace from=".C13 > .pin2" to=".ANT1 > .ANT" name="ANT" />
+    <trace from=".C13 > .pin2" to="net.ANTX" />
+    <trace from=".C15 > .pin1" to="net.ANTX" />
+    <trace from=".C15 > .pin2" to="net.GND" />
+    <trace from=".ANT1 > .ANT" to="net.ANTX" />
 
     {/* ═══════════════════════ §7 SILKSCREEN MANUAL ═══════════════════════
         The board labels itself: what each knob/pad does, the transistor
@@ -241,8 +315,11 @@ export default () => (
     <silkscreentext text="AUX" pcbX={-36} pcbY={-8} fontSize="1.2mm" />
     <silkscreentext text="TUNE" pcbX={30.48} pcbY={19.5} fontSize="1.2mm" />
     <silkscreentext text="L1: 3T ON 5MM FORM" pcbX={36} pcbY={7.5} fontSize="1.0mm" />
-    <silkscreentext text="ANT 30-75CM WIRE" pcbX={38} pcbY={-9} fontSize="1.1mm" />
-    <silkscreentext text="9V" pcbX={-38.1} pcbY={-19} fontSize="1.2mm" />
+    <silkscreentext text="ANT: MAX 20CM WIRE" pcbX={33} pcbY={-17.5} fontSize="1.1mm" />
+    <silkscreentext text="DEV" pcbX={5.08} pcbY={-16.8} fontSize="1.2mm" />
+    <silkscreentext text="+" pcbX={-43.18} pcbY={-19} fontSize="1.2mm" />
+    <silkscreentext text="9V" pcbX={-40.64} pcbY={-19} fontSize="1.2mm" />
+    <silkscreentext text="-" pcbX={-38.1} pcbY={-19} fontSize="1.2mm" />
     <silkscreentext text="ON" pcbX={-30.48} pcbY={-19} fontSize="1.2mm" />
     <silkscreentext text="BC547/BC548: FLAT FACE DOWN" pcbX={-1} pcbY={-8} fontSize="1.1mm" />
     <silkscreentext text="2N2222A: ROTATE 180" pcbX={-1} pcbY={-10} fontSize="1.1mm" />

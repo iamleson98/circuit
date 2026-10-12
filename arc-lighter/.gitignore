@@ -1,0 +1,7 @@
+node_modules/
+dist/
+circuit-*.json
+sim-*.csv
+gerbers-*.zip
+*.tmp.mjs
+.tscircuit/

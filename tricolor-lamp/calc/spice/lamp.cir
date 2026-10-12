@@ -1,0 +1,145 @@
+
+.model LEDB D(IS=3.981e-21 N=2.6 RS=15 CJO=30p)
+.model LEDW D(IS=3.981e-21 N=2.6 RS=15 CJO=30p)
+.model LEDY D(IS=1.647e-18 N=2.0 RS=10 CJO=30p)
+.model D1N5819 D(IS=31.7u N=1.373 RS=0.051 CJO=110p M=0.35)
+.model D1N4148 D(IS=2.52n N=1.752 RS=0.568 CJO=4p M=0.4 VJ=0.75 TT=20n)
+.model Q2N2222A NPN(IS=14.34f BF=255.9 NE=1.307 ISE=14.34f IKF=.2847 BR=6.092 NC=2 RC=1 RB=10 VAF=74.03 CJC=7.306p CJE=22.01p TR=46.91n TF=411.1p)
+* Tri-color lamp controller — generated from the routed board by board_to_spice.mjs
+VPSU psu_emf 0 12
+SWALL psu_emf psu_out RON=0.05 ROFF=1e9  ; the wall switch + the supply's output stage
+CPSU psu_out 0 1000u  ; the supply's own output capacitors
+RJ1 psu_out n_f1_a 0.005
+RJ1G 0 0 0.001
+RF1 n_f1_a n_d1_pin1 0.15  ; MF-R110, cold
+D1 n_d1_pin1 v12 D1N5819
+C1 v12 0 0.00047
+C2 v12 0 1e-7
+* U1: 78L05 — pass transistor, base clamped at 5.6 V and ≥ 1.2 V below IN
+DU1A v12 u1_d D1N4148
+DU1B u1_d u1_e D1N4148
+RU1B u1_e u1_b 2k
+DU1Z u1_b u1_ref D1N4148
+VU1REF u1_ref 0 5.0
+QU1 v12 u1_b vreg Q2N2222A
+RU1Q v12 0 3.9k  ; ≈ 3 mA quiescent
+C3 v12 0 3.3e-7
+C4 vreg 0 1e-7
+D2 vreg vcc D1N4148
+C5 vcc 0 0.00022
+* U2: ATtiny85 — supply current and three output pins (firmware decides)
+RU2SLEEP vcc 0 360000  ; asleep
+SU2AWAKE vcc u2_a RON=1 ROFF=1e12
+RU2A u2_a 0 5.5k  ; + 0.8 mA awake
+EPB0 u2_pb0 0 vcc 0 0
+RPB0 u2_pb0 g1 50
+EPB1 u2_pb1 0 vcc 0 0
+RPB1 u2_pb1 g2 50
+EPB4 u2_pb4 0 vcc 0 0
+RPB4 u2_pb4 g3 50
+C6 vcc 0 1e-7
+R1 vcc rst 10000
+R2 v12 sense 100000
+R3 sense 0 33000
+C7 sense 0 1e-8
+* J2: ISP header, nothing plugged in
+* J3: no jumper
+R6 mode n_j3_mid 10000
+R4 vcc mode 1000000
+R5 mode 0 1000000
+C8 mode 0 1e-8
+SQ1 blue_n 0 RON=0.025 ROFF=1e8  ; IRLZ44N
+CQ1G gate1 0 1.8n
+SQ2 white_n 0 RON=0.025 ROFF=1e8  ; IRLZ44N
+CQ2G gate2 0 1.8n
+SQ3 yellow_n 0 RON=0.025 ROFF=1e8  ; IRLZ44N
+CQ3G gate3 0 1.8n
+R7 g1 gate1 100
+R8 g2 gate2 100
+R9 g3 gate3 100
+R10 gate1 0 100000
+R11 gate2 0 100000
+R12 gate3 0 100000
+* J4: the cable — its four nets are shared with the panel's J1
+* Tri-color lamp LED panel — generated from the routed board by board_to_spice.mjs
+RP_1 v12 p_n_d1a_pin1 150
+DP_D1a p_n_d1a_pin1 p_n_d1a_pin2 LEDB
+DP_D1b p_n_d1a_pin2 p_n_d1b_pin2 LEDB
+DP_D1c p_n_d1b_pin2 blue_n LEDB
+RP_2 v12 p_n_d2a_pin1 150
+DP_D2a p_n_d2a_pin1 p_n_d2a_pin2 LEDW
+DP_D2b p_n_d2a_pin2 p_n_d2b_pin2 LEDW
+DP_D2c p_n_d2b_pin2 white_n LEDW
+RP_3 v12 p_n_d3a_pin1 220
+DP_D3a p_n_d3a_pin1 p_n_d3a_pin2 LEDY
+DP_D3b p_n_d3a_pin2 p_n_d3b_pin2 LEDY
+DP_D3c p_n_d3b_pin2 p_n_d3c_pin2 LEDY
+DP_D3d p_n_d3c_pin2 yellow_n LEDY
+RP_4 v12 p_n_d4a_pin1 150
+DP_D4a p_n_d4a_pin1 p_n_d4a_pin2 LEDW
+DP_D4b p_n_d4a_pin2 p_n_d4b_pin2 LEDW
+DP_D4c p_n_d4b_pin2 white_n LEDW
+RP_5 v12 p_n_d5a_pin1 220
+DP_D5a p_n_d5a_pin1 p_n_d5a_pin2 LEDY
+DP_D5b p_n_d5a_pin2 p_n_d5b_pin2 LEDY
+DP_D5c p_n_d5b_pin2 p_n_d5c_pin2 LEDY
+DP_D5d p_n_d5c_pin2 yellow_n LEDY
+RP_6 v12 p_n_d6a_pin1 150
+DP_D6a p_n_d6a_pin1 p_n_d6a_pin2 LEDB
+DP_D6b p_n_d6a_pin2 p_n_d6b_pin2 LEDB
+DP_D6c p_n_d6b_pin2 blue_n LEDB
+RP_7 v12 p_n_d7a_pin1 220
+DP_D7a p_n_d7a_pin1 p_n_d7a_pin2 LEDY
+DP_D7b p_n_d7a_pin2 p_n_d7b_pin2 LEDY
+DP_D7c p_n_d7b_pin2 p_n_d7c_pin2 LEDY
+DP_D7d p_n_d7c_pin2 yellow_n LEDY
+RP_8 v12 p_n_d8a_pin1 150
+DP_D8a p_n_d8a_pin1 p_n_d8a_pin2 LEDB
+DP_D8b p_n_d8a_pin2 p_n_d8b_pin2 LEDB
+DP_D8c p_n_d8b_pin2 blue_n LEDB
+RP_9 v12 p_n_d9a_pin1 150
+DP_D9a p_n_d9a_pin1 p_n_d9a_pin2 LEDW
+DP_D9b p_n_d9a_pin2 p_n_d9b_pin2 LEDW
+DP_D9c p_n_d9b_pin2 white_n LEDW
+RP_10 v12 p_n_d10a_pin1 150
+DP_D10a p_n_d10a_pin1 p_n_d10a_pin2 LEDB
+DP_D10b p_n_d10a_pin2 p_n_d10b_pin2 LEDB
+DP_D10c p_n_d10b_pin2 blue_n LEDB
+RP_11 v12 p_n_d11a_pin1 150
+DP_D11a p_n_d11a_pin1 p_n_d11a_pin2 LEDW
+DP_D11b p_n_d11a_pin2 p_n_d11b_pin2 LEDW
+DP_D11c p_n_d11b_pin2 white_n LEDW
+RP_12 v12 p_n_d12a_pin1 220
+DP_D12a p_n_d12a_pin1 p_n_d12a_pin2 LEDY
+DP_D12b p_n_d12a_pin2 p_n_d12b_pin2 LEDY
+DP_D12c p_n_d12b_pin2 p_n_d12c_pin2 LEDY
+DP_D12d p_n_d12c_pin2 yellow_n LEDY
+RP_13 v12 p_n_d13a_pin1 150
+DP_D13a p_n_d13a_pin1 p_n_d13a_pin2 LEDW
+DP_D13b p_n_d13a_pin2 p_n_d13b_pin2 LEDW
+DP_D13c p_n_d13b_pin2 white_n LEDW
+RP_14 v12 p_n_d14a_pin1 220
+DP_D14a p_n_d14a_pin1 p_n_d14a_pin2 LEDY
+DP_D14b p_n_d14a_pin2 p_n_d14b_pin2 LEDY
+DP_D14c p_n_d14b_pin2 p_n_d14c_pin2 LEDY
+DP_D14d p_n_d14c_pin2 yellow_n LEDY
+RP_15 v12 p_n_d15a_pin1 150
+DP_D15a p_n_d15a_pin1 p_n_d15a_pin2 LEDB
+DP_D15b p_n_d15a_pin2 p_n_d15b_pin2 LEDB
+DP_D15c p_n_d15b_pin2 blue_n LEDB
+RP_16 v12 p_n_d16a_pin1 220
+DP_D16a p_n_d16a_pin1 p_n_d16a_pin2 LEDY
+DP_D16b p_n_d16a_pin2 p_n_d16b_pin2 LEDY
+DP_D16c p_n_d16b_pin2 p_n_d16c_pin2 LEDY
+DP_D16d p_n_d16c_pin2 yellow_n LEDY
+RP_17 v12 p_n_d17a_pin1 150
+DP_D17a p_n_d17a_pin1 p_n_d17a_pin2 LEDB
+DP_D17b p_n_d17a_pin2 p_n_d17b_pin2 LEDB
+DP_D17c p_n_d17b_pin2 blue_n LEDB
+RP_18 v12 p_n_d18a_pin1 150
+DP_D18a p_n_d18a_pin1 p_n_d18a_pin2 LEDW
+DP_D18b p_n_d18a_pin2 p_n_d18b_pin2 LEDW
+DP_D18c p_n_d18b_pin2 white_n LEDW
+* J1: the cable
+.tran 0.5m 1.5
+.end

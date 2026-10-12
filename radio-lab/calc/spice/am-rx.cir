@@ -1,0 +1,65 @@
+
+* Standard vendor SPICE models (ON Semi / Fairchild 2N3904 & 2N2222A; NXP BC547B)
+.model Q2N3904 NPN(IS=6.734f BF=416.4 NE=1.259 ISE=6.734f IKF=66.78m BR=.7371 NC=2 RC=1 RB=10 VAF=74.03 CJC=3.638p MJC=.3085 VJC=.75 FC=.5 CJE=4.493p MJE=.2593 VJE=.75 TR=239.5n TF=301.2p)
+.model Q2N2222A NPN(IS=14.34f BF=255.9 NE=1.307 ISE=14.34f IKF=.2847 BR=6.092 NC=2 RC=1 RB=10 VAF=74.03 CJC=7.306p MJC=.3416 VJC=.75 FC=.5 CJE=22.01p MJE=.377 VJE=.75 TR=46.91n TF=411.1p)
+.model BC547B NPN(IS=2.39E-14 NF=1.008 ISE=3.545E-15 NE=1.541 BF=294.3 IKF=0.1357 VAF=63.2 NR=1.004 ISC=6.272E-14 NC=1.243 BR=7.946 IKR=0.1144 VAR=25.9 RB=1 RE=0.4683 RC=0.85 CJE=1.358E-11 VJE=0.65 MJE=0.3279 TF=4.391E-10 CJC=3.728E-12 VJC=0.3997 MJC=0.2955 TR=1E-9 FC=0.9579)
+.model D1N34A D(IS=1.3e-7 N=1.3 RS=7 CJO=0.6p VJ=0.3 M=0.4 TT=2n)
+.model D1N4148 D(IS=2.52n N=1.752 RS=0.568 CJO=4p M=0.4 VJ=0.75 TT=20n)
+.model LEDG D(IS=4.7e-20 N=2 RS=5 CJO=20p)
+
+* Radio Lab AM-RX — generated from the routed board by board_to_spice.mjs
+VBT1 bt1_emf 0 9
+RBT1_INT bt1_emf v9 1.5
+C1 v9 0 0.0001
+C2 v9 0 1e-7
+DLED1 n_led1_pin1 0 LEDG
+R1 v9 n_led1_pin1 2200
+VANT1 ant1_emf 0 0
+CANT1_WIRE ant1_emf n_ant1_ant 1.5e-11
+RANT1_LEAK n_ant1_ant 0 100meg
+C3 n_ant1_ant tank 4.7e-11
+L1 tank l1_s 0.00021999999999999998
+RL1_LOSS l1_s 0 27.65
+CCV1 tank 0 1.5e-10
+C4 tank n_c4_pin2 1e-7
+Q1 v9 n_c4_pin2 n_c5_pin1 BC547B
+R2 v9 n_c4_pin2 1000000
+R3 n_c4_pin2 0 470000
+R4 n_c5_pin1 0 2200
+C5 n_c5_pin1 n_c5_pin2 1e-7
+Q2 n_c7_pin1 n_c5_pin2 n_c6_pin1 BC547B
+R5 v9 n_c5_pin2 220000
+R6 n_c5_pin2 0 47000
+R7 n_c6_pin1 0 820
+R8 v9 n_c7_pin1 2200
+C6 n_c6_pin1 0 1e-7
+C7 n_c7_pin1 det_in 1e-7
+D1 det_in det D1N34A
+D2 0 det_in D1N34A
+C8 det 0 4.7e-9
+RV1_A det n_c9_pin1 5000
+RV1_B n_c9_pin1 0 5000
+Q3 n_led2_pin2 n_q3_pin2 0 BC547B
+R9 det n_q3_pin2 47000
+R10 v9 n_led2_pin1 1000
+DLED2 n_led2_pin1 n_led2_pin2 LEDG
+C9 n_c9_pin1 n_c9_pin2 0.00001
+RU1_INP n_c9_pin2 0 50k
+RU1_GAIN n_sw2_pin1 n_c11_pin2 1.35k
+RU1_GB n_sw2_pin1 0 15k
+RU1_BYP n_c10_pin1 0 15k
+RU1_Q v9 0 2.25k
+EU1 u1_o u1_mid n_c9_pin2 0 20
+VU1_MID u1_mid 0 4.5
+RU1_OUT u1_o n_c13_pin1 0.5
+RSW2_OPEN n_sw2_pin1 n_c11_pin1 100meg  ; GAIN 20/200 switch, open
+C11 n_c11_pin1 n_c11_pin2 0.00001
+C10 n_c10_pin1 0 1e-7
+C12 v9 0 1e-7
+C13 n_c13_pin1 n_c13_pin2 0.00022
+R11 n_c13_pin1 n_c14_pin1 10
+C14 n_c14_pin1 0 4.7e-8
+RSPK1 n_c13_pin2 0 8
+CPAR_TANK tank 0 8p
+.tran 20n 3m
+.end

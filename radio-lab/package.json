@@ -11,7 +11,7 @@
     "verify": "node verify.mjs",
     "render": "node render.mjs",
     "math": "node calc/circuit_math.mjs",
-    "sim": "node calc/sim_colpitts.mjs"
+    "sim": "node calc/sim_am.mjs"
   },
   "keywords": [
     "tscircuit",

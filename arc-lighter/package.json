@@ -1,0 +1,29 @@
+{
+  "name": "arc-lighter",
+  "version": "1.0.0",
+  "description": "Arc Lighter — a USB-rechargeable electric arc lighter with safety lock, auto-off and fault detection, designed in tscircuit",
+  "type": "module",
+  "scripts": {
+    "dev": "tsci dev board/index.tsx",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.build.json && node fix-imports.mjs",
+    "verify": "node verify.mjs",
+    "render": "node render.mjs",
+    "math": "node calc/circuit_math.mjs",
+    "sim": "node calc/sim_driver.mjs",
+    "test:firmware": "sh firmware/test/run.sh"
+  },
+  "keywords": ["tscircuit", "pcb", "arc-lighter", "attiny85", "li-ion", "flyback", "electronics"],
+  "license": "MIT",
+  "dependencies": {
+    "@tscircuit/core": "^0.0.2104",
+    "@tscircuit/props": "^0.0.694",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/react": "^19.3.0",
+    "circuit-to-svg": "^0.0.444",
+    "typescript": "^5.9.3"
+  }
+}

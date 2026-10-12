@@ -26,6 +26,12 @@
  *
  *    <platedhole />     → a plated through-hole that can carry a port name
  *    <silkscreenpath /> → silkscreen outline graphics
+ *    <courtyardrect />  → the keep-out the part's body (or the wire terminal's
+ *                         label box) needs. Every custom footprint has one, so
+ *                         tscircuit's DRC catches bodies that collide — without
+ *                         them it silently skipped these parts (it found the coil
+ *                         sitting on a resistor and the battery terminals 2.54mm
+ *                         from the switch: one solder blob from shorting the cell).
  *
  *  All pads sit on a 2.54mm (0.1") grid and use generous holes so beginners
  *  can solder them easily, and every part can also be wired off-board
@@ -43,6 +49,8 @@
  *  AntennaPad  (box)          1     ANT — solder 1-2m of insulated wire
  *  Lm386 (dip8 chip)          8     standard LM386 pinout
  *  NpnTo92 (npn transistor)   3     C/B/E on an in-line 0.1" TO-92 row
+ *  Cap / ECap / Led5mm        2     radial, 0.8/1.0 mm holes; ECap + = pin1 (square)
+ *  Res / AxialDiode           2     axial, 0.8 mm holes; diode cathode = pin2 (square)
  *
  *  Note: Switch / Battery / Potentiometer are imported as explicit class
  *  components because JSX's lowercase <switch> collides with the SVG
@@ -51,13 +59,27 @@
 
 
 
+/** Manufacturing rules spread into every <board> of this project. tscircuit's
+ *  defaults are a fab's ABSOLUTE minimums (0.20mm-drill / 0.30mm vias with a
+ *  0.05mm ring); these are comfortable standard 2-layer rules instead. */
+export const FAB_RULES = {
+  minTraceWidth: "0.15mm",
+  minTraceToPadEdgeClearance: "0.15mm",
+  minPadEdgeToPadEdgeClearance: "0.15mm",
+  minViaEdgeToPadEdgeClearance: "0.15mm",
+  minViaHoleDiameter: "0.3mm",
+  minViaPadDiameter: "0.6mm",
+  pcbStyle: { viaHoleDiameter: "0.3mm", viaPadDiameter: "0.6mm" },
+} as const
+
 export interface PartProps extends Record<string, any> {
   name: string
 }
 
 /* ── 9V battery clip ─────────────────────────────────────────────────────
  * Two wire terminals 5.08mm apart (roomy for the snap's stranded leads).
- * Renders a real battery symbol in the schematic. pin1 = +, pin2 = −. */
+ * Renders a real battery symbol in the schematic. pin1 = +, pin2 = −
+ * (each board prints "+ 9V -" above the pads: red lead to the "+" hole). */
 export const Battery9V = (props: PartProps) => (
   <battery
     {...props}
@@ -68,13 +90,14 @@ export const Battery9V = (props: PartProps) => (
         <platedhole portHints={["pin2"]} pcbX={2.54} pcbY={0} holeDiameter={1.6} outerDiameter={2.5} shape="circle" />
         <silkscreenpath
           route={[
-            { x: -5.2, y: -2.6 },
-            { x: 5.2, y: -2.6 },
-            { x: 5.2, y: 2.6 },
-            { x: -5.2, y: 2.6 },
-            { x: -5.2, y: -2.6 },
+            { x: -4.3, y: -2.0 },
+            { x: 4.3, y: -2.0 },
+            { x: 4.3, y: 2.0 },
+            { x: -4.3, y: 2.0 },
+            { x: -4.3, y: -2.0 },
           ]}
         />
+        <courtyardrect pcbX={0} pcbY={0} width={8.6} height={4.0} />
       </footprint>
     }
   />
@@ -93,13 +116,14 @@ export const PowerSwitch = (props: PartProps) => (
         <platedhole portHints={["pin2"]} pcbX={2.54} pcbY={0} holeDiameter={1.2} outerDiameter={2.1} shape="circle" />
         <silkscreenpath
           route={[
-            { x: -5.2, y: -2.6 },
-            { x: 5.2, y: -2.6 },
-            { x: 5.2, y: 2.6 },
-            { x: -5.2, y: 2.6 },
-            { x: -5.2, y: -2.6 },
+            { x: -4.3, y: -2.0 },
+            { x: 4.3, y: -2.0 },
+            { x: 4.3, y: 2.0 },
+            { x: -4.3, y: 2.0 },
+            { x: -4.3, y: -2.0 },
           ]}
         />
+        <courtyardrect pcbX={0} pcbY={0} width={8.6} height={4.0} />
       </footprint>
     }
   />
@@ -127,6 +151,7 @@ export const VolumePot = (props: PartProps) => (
             { x: -4.2, y: -2.2 },
           ]}
         />
+        <courtyardrect pcbX={0} pcbY={0} width={8.4} height={4.4} />
       </footprint>
     }
   />
@@ -156,6 +181,7 @@ export const VarCap = (props: PartProps) => (
             { x: -3.6, y: -2.2 },
           ]}
         />
+        <courtyardrect pcbX={0} pcbY={0.3} width={7.2} height={5.0} />
       </footprint>
     }
     schPinArrangement={{
@@ -178,6 +204,7 @@ export const ElectretMic = (props: PartProps) => (
         <platedhole portHints={["MIC_N"]} pcbX={1.27} pcbY={0} holeDiameter={1.0} outerDiameter={1.9} shape="circle" />
         {/* circle hint for the round capsule body */}
         <silkscreencircle pcbX={0} pcbY={-2.2} radius={2.4} />
+        <courtyardrect pcbX={0} pcbY={-1.83} width={5.3} height={6.05} />
       </footprint>
     }
     schPinArrangement={{
@@ -198,13 +225,14 @@ export const SpeakerTerm = (props: PartProps) => (
         <platedhole portHints={["SPK_N"]} pcbX={2.54} pcbY={0} holeDiameter={1.6} outerDiameter={2.5} shape="circle" />
         <silkscreenpath
           route={[
-            { x: -5.2, y: -2.6 },
-            { x: 5.2, y: -2.6 },
-            { x: 5.2, y: 2.6 },
-            { x: -5.2, y: 2.6 },
-            { x: -5.2, y: -2.6 },
+            { x: -4.3, y: -2.0 },
+            { x: 4.3, y: -2.0 },
+            { x: 4.3, y: 2.0 },
+            { x: -4.3, y: 2.0 },
+            { x: -4.3, y: -2.0 },
           ]}
         />
+        <courtyardrect pcbX={0} pcbY={0} width={8.6} height={4.0} />
       </footprint>
     }
     schPinArrangement={{
@@ -239,6 +267,7 @@ export const AntennaPad = (props: PartProps) => (
             { x: 1.3, y: 4.5 },
           ]}
         />
+        <courtyardcircle pcbX={0} pcbY={0} radius={1.55} />
       </footprint>
     }
     schPinArrangement={{
@@ -284,13 +313,16 @@ export const Lm386 = (props: PartProps) => (
   />
 )
 
-/* ── BC547 / 2N3904 NPN transistor, in-line TO-92 ────────────────────────
+/* ── NPN transistor, in-line TO-92 (BC547/BC548, 2N3904, 2N2222A) ──────
  * tscircuit's <transistor> draws a REAL NPN symbol in the schematic and
- * maps collector→pad1, base→pad2, emitter→pad3. We use the IN-LINE to92
- * footprint (3 holes in a row, 0.1" pitch) so either transistor works:
+ * maps collector→pin1, base→pin2, emitter→pin3. The footprint is spelled
+ * out here instead of using the stock "to92_inline" string: that one has
+ * 0.72mm holes in 0.95mm-wide pads — a 0.115mm annular ring, below the
+ * 0.18mm a fab accepts for plated holes. These pads are 1.2 × 1.8mm with
+ * 0.8mm holes (0.2mm ring), still on the 0.1" row so either part fits:
  *
- *    BC547  (C-B-E): insert with the FLAT FACE toward the board edge
- *    2N3904 (E-B-C): insert rotated 180° (flat face the other way)
+ *    BC547/BC548 (C-B-E): insert with the FLAT FACE toward −Y (silkscreen bar)
+ *    2N3904 / 2N2222A in TO-92 (E-B-C): insert rotated 180°
  *
  * Spreading TO-92 legs into a 0.1" row is the first skill every kit
  * builder learns — the tutorial shows it step by step. */
@@ -298,9 +330,138 @@ export const NpnTo92 = (props: PartProps) => (
   <transistor
     {...props}
     type="npn"
-    footprint="to92_inline_p2.54mm"
+    footprint={
+      <footprint>
+        <platedhole portHints={["pin1"]} shape="pill" pcbX={-2.54} pcbY={0} outerWidth={1.2} outerHeight={1.8} holeWidth={0.8} holeHeight={0.8} />
+        <platedhole portHints={["pin2"]} shape="pill" pcbX={0} pcbY={0} outerWidth={1.2} outerHeight={1.8} holeWidth={0.8} holeHeight={0.8} />
+        <platedhole portHints={["pin3"]} shape="pill" pcbX={2.54} pcbY={0} outerWidth={1.2} outerHeight={1.8} holeWidth={0.8} holeHeight={0.8} />
+        {/* flat face (−Y) and the rounded back of the body */}
+        <silkscreenpath route={[{ x: -2.2, y: -1.6 }, { x: 2.2, y: -1.6 }]} />
+        <silkscreenpath
+          route={[40, 60, 80, 100, 120, 140].map((a) => ({
+            x: 2.5 * Math.cos((a * Math.PI) / 180),
+            y: 2.5 * Math.sin((a * Math.PI) / 180),
+          }))}
+        />
+        {/* pin-1 (collector) dot */}
+        <silkscreenpath route={[{ x: -3.6, y: 0.4 }, { x: -3.6, y: -0.4 }]} />
+        <courtyardrect pcbX={0} pcbY={0.45} width={6.8} height={4.6} />
+      </footprint>
+    }
   />
 )
+
+/* ── capacitors and LEDs, with holes sized for real leads ──────────────────
+ * tscircuit's stock "radial_p2.54mm" footprint drills 0.635 mm holes: a
+ * 0.5-0.6 mm capacitor or LED leg barely fits once the hole is plated, and
+ * it has no polarity mark. These keep the stock pad positions and body
+ * outlines (so placement and routing are unchanged) but drill lead + 0.2 mm
+ * or more, and mark polarity:
+ *   Cap      ceramic / film, any way round           0.8 mm holes
+ *   ECap     aluminium electrolytic: + = pin1 = the SQUARE pad, marked "+";
+ *            the can's stripe (−) goes on the other side   0.8 mm holes
+ *   Led5mm   anode = pin1 (round pad, long leg); cathode = pin2 (square
+ *            pad, the flat on the rim)               1.0 mm holes (0.5 mm
+ *            square legs are 0.71 mm corner to corner) */
+const rimPath = (r: number, from: number, to: number) =>
+  Array.from({ length: 41 }, (_, i) => {
+    const a = ((from + ((to - from) * i) / 40) * Math.PI) / 180
+    return { x: r * Math.cos(a), y: r * Math.sin(a) }
+  })
+
+export const Cap = (props: PartProps & { capacitance: string }) => (
+  <capacitor
+    {...props}
+    capacitance={props.capacitance}
+    footprint={
+      <footprint>
+        <platedhole portHints={["pin1"]} pcbX={-1.27} pcbY={0} holeDiameter={0.8} outerDiameter={1.4} shape="circle" />
+        <platedhole portHints={["pin2"]} pcbX={1.27} pcbY={0} holeDiameter={0.8} outerDiameter={1.4} shape="circle" />
+        <silkscreenpath route={rimPath(2.6, 0, 360)} />
+        <courtyardcircle pcbX={0} pcbY={0} radius={2.79} />
+      </footprint>
+    }
+  />
+)
+
+export const ECap = (props: PartProps & { capacitance: string; pitch: 2.54 | 5 }) => {
+  const big = props.pitch === 5
+  const p = big ? 5 : 2.54
+  const r = big ? 5.1 : 2.6
+  const pad = big ? 1.6 : 1.5
+  const { pitch: _p, ...rest } = props
+  return (
+    <capacitor
+      {...rest}
+      capacitance={props.capacitance}
+      polarized
+      footprint={
+        <footprint>
+          <platedhole portHints={["pin1", "pos"]} pcbX={-p / 2} pcbY={0} holeDiameter={0.8} rectPadWidth={pad} rectPadHeight={pad} holeShape="circle" padShape="rect" holeOffsetX={0} holeOffsetY={0} shape="circular_hole_with_rect_pad" />
+          <platedhole portHints={["pin2", "neg"]} pcbX={p / 2} pcbY={0} holeDiameter={0.8} outerDiameter={pad} shape="circle" />
+          <silkscreenpath route={rimPath(r, 0, 360)} />
+          {/* "+" beside the square pad */}
+          <silkscreenpath route={[{ x: -p / 2 - 0.45, y: r * 0.55 }, { x: -p / 2 + 0.45, y: r * 0.55 }]} />
+          <silkscreenpath route={[{ x: -p / 2, y: r * 0.55 - 0.45 }, { x: -p / 2, y: r * 0.55 + 0.45 }]} />
+          <courtyardcircle pcbX={0} pcbY={0} radius={big ? 5.25 : 2.79} />
+        </footprint>
+      }
+    />
+  )
+}
+
+export const Led5mm = (props: PartProps & { color: string }) => (
+  <led
+    {...props}
+    footprint={
+      <footprint>
+        <platedhole portHints={["pin1", "anode"]} pcbX={-1.27} pcbY={0} holeDiameter={1.0} outerDiameter={1.6} shape="circle" />
+        <platedhole portHints={["pin2", "cathode"]} pcbX={1.27} pcbY={0} holeDiameter={1.0} rectPadWidth={1.6} rectPadHeight={1.6} holeShape="circle" padShape="rect" holeOffsetX={0} holeOffsetY={0} shape="circular_hole_with_rect_pad" />
+        {/* the rim, with its flat on the cathode side */}
+        <silkscreenpath route={rimPath(2.9, 60, 300)} />
+        <silkscreenpath route={[{ x: 1.45, y: 2.51 }, { x: 1.45, y: -2.51 }]} />
+        <courtyardcircle pcbX={0} pcbY={0} radius={2.95} />
+      </footprint>
+    }
+  />
+)
+
+/* ── axial resistors and diodes (lying flat), 0.8 mm holes ─────────────────
+ * Same pads, pitch and courtyard as the stock "axial_pX" footprints, but
+ * 0.8 mm holes (¼ W resistor legs are ≈ 0.6 mm; the stock 0.7 mm is tight),
+ * and diodes show which end is which: the cathode (pin2, the banded end of
+ * the real diode) gets the SQUARE pad and the bar of a ▶| symbol. */
+const axialFootprint = (p: number, diode: boolean) => (
+  <footprint>
+    <platedhole portHints={diode ? ["pin1", "anode"] : ["pin1"]} pcbX={-p / 2} pcbY={0} holeDiameter={0.8} outerDiameter={1.4} shape="circle" />
+    {diode ? (
+      <platedhole portHints={["pin2", "cathode"]} pcbX={p / 2} pcbY={0} holeDiameter={0.8} rectPadWidth={1.4} rectPadHeight={1.4} holeShape="circle" padShape="rect" holeOffsetX={0} holeOffsetY={0} shape="circular_hole_with_rect_pad" />
+    ) : (
+      <platedhole portHints={["pin2"]} pcbX={p / 2} pcbY={0} holeDiameter={0.8} outerDiameter={1.4} shape="circle" />
+    )}
+    {diode ? (
+      <>
+        <silkscreenpath route={[{ x: -(p / 2 - 1.75), y: 0 }, { x: -0.7, y: 0 }]} />
+        <silkscreenpath route={[{ x: 0.7, y: 0 }, { x: p / 2 - 1.75, y: 0 }]} />
+        <silkscreenpath route={[{ x: -0.7, y: 0.8 }, { x: 0.7, y: 0 }, { x: -0.7, y: -0.8 }, { x: -0.7, y: 0.8 }]} />
+        <silkscreenpath route={[{ x: 0.7, y: 0.8 }, { x: 0.7, y: -0.8 }]} />
+      </>
+    ) : (
+      <silkscreenpath route={[{ x: -(p / 2 - 1.75), y: 0 }, { x: p / 2 - 1.75, y: 0 }]} />
+    )}
+    <courtyardrect pcbX={0} pcbY={0} width={p + 2.0} height={2.1} />
+  </footprint>
+)
+
+export const Res = (props: PartProps & { resistance: string; pitch: 7.62 | 10.16 }) => {
+  const { pitch, ...rest } = props
+  return <resistor {...rest} resistance={props.resistance} footprint={axialFootprint(pitch, false)} />
+}
+
+export const AxialDiode = (props: PartProps & { pitch: 7.62 | 10.16 }) => {
+  const { pitch, ...rest } = props
+  return <diode {...rest} footprint={axialFootprint(pitch, true)} />
+}
 
 /**
  * ═════════════════════════════════════════════════════════════════════════
@@ -321,22 +482,23 @@ export const NpnTo92 = (props: PartProps) => (
  *  WHY FOUR STAGES (each one is a real broadcast concept, shrunk)
  *  · Q1 amplifies the millivolt microphone signal to volts (audio chain).
  *  · Q2 is an emitter follower whose output (net.VMD) is a power rail that
- *    WIGGLES WITH YOUR VOICE — the "modulated supply".
- *  · Q3 is a common-base Colpitts oscillator: L1 + CV1 + C14/C15 set the
- *    carrier frequency. It self-limits to a steady amplitude — a clean,
- *    stable carrier (turning CV1 slides it across 0.65-0.85 MHz).
- *  · Q4 is the modulated FINAL amplifier: driven hard by the carrier, its
- *    output can only swing between ground and VMD — so the output's
- *    AMPLITUDE EQUALS THE MODULATED SUPPLY. Voice on VMD ⇒ amplitude
- *    modulation stamped onto the carrier. That is exactly how the big
- *    transmitters do "high-level AM".
+ *    WIGGLES WITH YOUR VOICE — the "modulated supply". It feeds ONLY the
+ *    final amplifier.
+ *  · Q3 is a common-base Colpitts oscillator on the steady 9V rail: L1 +
+ *    CV1 + C14/C15 set the carrier frequency (TUNE: ~0.65-0.85 MHz).
+ *  · Q4 is the modulated FINAL amplifier with a tuned output tank (L2 +
+ *    CV2 "PEAK" + C18): its collector swing is bounded by VMD, so the
+ *    output's AMPLITUDE FOLLOWS THE MODULATED SUPPLY — voice on VMD ⇒
+ *    amplitude modulation — and the tank strips the harmonics a hard-
+ *    driven stage makes. That is exactly how the big transmitters do
+ *    "high-level AM".
  *
  *  PROVEN, NOT HOPED
- *  calc/sim_colpitts.mjs integrates this exact oscillator (RK4, Ebers-Moll
- *  transistor, real bias network): it starts from a 1mV seed, lands within
- *  2% of the predicted frequency, tunes monotonically 666-847 kHz, never
- *  drops out under voice swings, and the final stage measures m ≈ 0.23
- *  modulation depth. calc/circuit_math.mjs re-derives every bias point.
+ *  calc/spice/ holds standard SPICE decks of this board (run them in
+ *  ngspice or LTspice), and calc/sim_am.mjs re-runs the checks with a
+ *  bundled circuit simulator using vendor transistor models: start-up at
+ *  every TUNE setting for BC547B and 2N3904 with coil Q 25-60, harmonics
+ *  ≥ 27 dB below the carrier, modulation depth vs voice level.
  *
  *  HOW TO READ THIS FILE
  *  One flat netlist organized like the schematic pages of a real radio:
@@ -351,18 +513,18 @@ export const NpnTo92 = (props: PartProps) => (
 import "@tscircuit/core"
 
 export default () => (
-  <board width="91.44mm" height="55.88mm" name="am-tx">
+  <board width="91.44mm" height="55.88mm" name="am-tx" {...FAB_RULES}>
     {/* ═══════════════════════ §1 POWER ENTRY ═════════════════════════════
         9V battery → slide switch → the V9 rail. C1 (100µF) is the bulk
         reservoir for audio peaks; C2 (100nF) is the fast local decoupler.
         LED1 + R1 give a ~3mA power light: (9V − 2V) / 2.2k ≈ 3mA. */}
 
-    <Battery9V name="BT1" pcbX={-38.1} pcbY={-22.86} schX={-14} schY={-7} />
+    <Battery9V name="BT1" pcbX={-40.64} pcbY={-22.86} schX={-14} schY={-7} />
     <PowerSwitch name="SW1" pcbX={-30.48} pcbY={-22.86} schX={-10} schY={-7} />
-    <capacitor name="C1" capacitance="100uF" footprint="radial_p5mm" pcbX={-38.1} pcbY={-13.97} schX={-12} schY={-3} />
-    <capacitor name="C2" capacitance="100nF" footprint="radial_p2.54mm" pcbX={-29.21} pcbY={-13.97} schX={-9} schY={-3} />
-    <led name="LED1" color="green" footprint="radial_p2.54mm" pcbX={-21.59} pcbY={-22.86} schX={-6} schY={-6} />
-    <resistor name="R1" resistance="2.2kohm" footprint="axial_p10.16mm" pcbX={-11.43} pcbY={-22.86} schX={-4} schY={-6} />
+    <ECap name="C1" capacitance="100uF" pitch={5} pcbX={-38.1} pcbY={-13.97} schX={-12} schY={-3} />
+    <Cap name="C2" capacitance="100nF" pcbX={-29.21} pcbY={-13.97} schX={-9} schY={-3} />
+    <Led5mm name="LED1" color="green" pcbX={-21.59} pcbY={-22.86} schX={-6} schY={-6} />
+    <Res name="R1" resistance="2.2kohm" pitch={10.16} pcbX={-11.43} pcbY={-22.86} schX={-4} schY={-6} />
 
     <trace from=".BT1 > .pin1" to=".SW1 > .pin1" />
     <trace from=".SW1 > .pin2" to="net.V9" />
@@ -382,8 +544,8 @@ export default () => (
         the AC into Q1's base. (1µF film/MLCC — no polarity worries.) */}
 
     <ElectretMic name="MIC1" pcbX={-40.64} pcbY={8.89} schX={-16} schY={9} />
-    <resistor name="R2" resistance="2.2kohm" footprint="axial_p10.16mm" pcbX={-33.02} pcbY={21.59} schX={-14} schY={11} />
-    <capacitor name="C3" capacitance="1uF" footprint="radial_p2.54mm" pcbX={-25.4} pcbY={2.54} schX={-12} schY={9} />
+    <Res name="R2" resistance="2.2kohm" pitch={10.16} pcbX={-33.02} pcbY={21.59} schX={-14} schY={11} />
+    <Cap name="C3" capacitance="1uF" pcbX={-25.4} pcbY={2.54} schX={-12} schY={9} />
 
     <trace from=".MIC1 > .MIC_P" to=".R2 > .pin2" name="MIC" />
     <trace from=".MIC1 > .MIC_P" to=".C3 > .pin1" />
@@ -399,11 +561,11 @@ export default () => (
         collector — plenty to drive the modulator. */}
 
     <NpnTo92 name="Q1" pcbX={-15.24} pcbY={8.89} schX={-9} schY={9} />
-    <resistor name="R3" resistance="68kohm" footprint="axial_p10.16mm" pcbX={-12.7} pcbY={15.24} schX={-9} schY={12} />
-    <resistor name="R4" resistance="10kohm" footprint="axial_p10.16mm" pcbX={-15.24} pcbY={2.54} schX={-9} schY={6} />
-    <resistor name="R5" resistance="4.7kohm" footprint="axial_p10.16mm" pcbX={-25.4} pcbY={15.24} schX={-11.5} schY={9} />
-    <resistor name="R6" resistance="560ohm" footprint="axial_p10.16mm" pcbX={-10.16} pcbY={-4.45} schX={-7} schY={6} />
-    <capacitor name="C4" capacitance="100uF" footprint="radial_p5mm" pcbX={-19.05} pcbY={-13.97} schX={-5} schY={4} />
+    <Res name="R3" resistance="68kohm" pitch={10.16} pcbX={-12.7} pcbY={15.24} schX={-9} schY={12} />
+    <Res name="R4" resistance="10kohm" pitch={10.16} pcbX={-15.24} pcbY={2.54} schX={-9} schY={6} />
+    <Res name="R5" resistance="4.7kohm" pitch={10.16} pcbX={-25.4} pcbY={15.24} schX={-11.5} schY={9} />
+    <Res name="R6" resistance="560ohm" pitch={10.16} pcbX={-10.16} pcbY={-4.45} schX={-7} schY={6} />
+    <ECap name="C4" capacitance="100uF" pitch={5} pcbX={-19.05} pcbY={-13.97} schX={-5} schY={4} />
 
     <trace from=".R3 > .pin1" to="net.V9" />
     <trace from=".R3 > .pin2" to=".Q1 > .base" />
@@ -420,15 +582,18 @@ export default () => (
         Q2 is an emitter follower whose BASE carries the audio (C5 couples
         it from Q1's collector) and whose EMITTER becomes net.VMD — a power
         rail that wiggles with your voice. R7/R8 hold the base at ~5.4V, so
-        VMD idles at ~4.7V and swings several volts with speech. The final
-        amplifier's output ceiling IS this rail — that's how the audio gets
-        stamped onto the carrier (see §6). Shout and you can overmodulate
-        (hear it distort) — the tutorial turns that into an experiment. */}
+        VMD idles at ~4.7V. ONLY the final amplifier (§6) hangs on VMD: the
+        final's output swing IS this rail, which is how the audio gets
+        stamped onto the carrier. C19 (100nF) is VMD's RF ground — the
+        output tank's coil returns its RF current through it — while still
+        passing audio (the follower's ~25Ω output × 100nF ≈ 60kHz corner).
+        Speak close to the mic: ~5mV of voice gives ~6% modulation, a shout
+        ~25%; push harder and you overmodulate (the tutorial's experiment). */}
 
     <NpnTo92 name="Q2" pcbX={-1.27} pcbY={8.89} schX={-2} schY={9} />
-    <resistor name="R7" resistance="10kohm" footprint="axial_p10.16mm" pcbX={-8.89} pcbY={21.59} schX={-2} schY={12} />
-    <resistor name="R8" resistance="15kohm" footprint="axial_p10.16mm" pcbX={1.27} pcbY={15.24} schX={-2} schY={6} />
-    <capacitor name="C5" capacitance="1uF" footprint="radial_p2.54mm" pcbX={-5.08} pcbY={2.54} schX={-5} schY={12} />
+    <Res name="R7" resistance="10kohm" pitch={10.16} pcbX={-8.89} pcbY={21.59} schX={-2} schY={12} />
+    <Res name="R8" resistance="15kohm" pitch={10.16} pcbX={1.27} pcbY={15.24} schX={-2} schY={6} />
+    <Cap name="C5" capacitance="1uF" pcbX={-5.08} pcbY={2.54} schX={-5} schY={12} />
 
     <trace from=".Q1 > .collector" to=".C5 > .pin1" name="AF_OUT" />
     <trace from=".C5 > .pin2" to=".Q2 > .base" />
@@ -438,36 +603,40 @@ export default () => (
     <trace from=".R8 > .pin2" to="net.GND" />
     <trace from=".Q2 > .collector" to="net.V9" />
     <trace from=".Q2 > .emitter" to="net.VMD" />
+    <Cap name="C19" capacitance="100nF" pcbX={29.21} pcbY={-19.05} schX={1} schY={6} />
+    <trace from=".C19 > .pin1" to="net.VMD" />
+    <trace from=".C19 > .pin2" to="net.GND" />
 
     {/* ═══════════════════════ §5 CARRIER OSCILLATOR (Q3) + TANK ══════════
         A common-base Colpitts — the workhorse oscillator of simple radios.
-        · C6 (2.2nF) grounds the base at RF but is transparent at audio —
-          the base bias (R10/R11 from VMD) stays put, giving a rock-stable
-          carrier. (Making C6 huge would couple audio into the bias and
-          wobble the carrier — a real design subtlety the tutorial covers.)
-        · The TANK: L1 hangs from the collector to VMD (the coil IS the DC
+        It runs from the STEADY V9 rail, never from VMD: an oscillator on a
+        rail that carries audio is frequency-modulated by it (simulation of
+        that arrangement: ~±27kHz of carrier swing on loud speech — more
+        than an AM receiver's ±7kHz passband) and the AM radio hears
+        distortion. Clean AM = steady oscillator, modulated FINAL.
+        · R10/R11 (56k/10k from V9) bias the base at ~1.36V; C6 (2.2nF)
+          grounds it at RF. R12 sets the emitter current (~0.7mA).
+        · The TANK: L1 hangs from the collector to V9 (the coil IS the DC
           feed — at DC it's a near-short, at RF it's high impedance), and
           the tank capacitance to ground is CV1 ∥ (C14 series C15).
               C14=C15=680pF in series = 340pF, plus CV1 10-280pF
-              → ~350-630pF with L1=100µH → ~0.65 to 0.84 MHz
+              → ~350-630pF with L1=100µH → ~0.65 to 0.85 MHz
         · C14/C15 also form the feedback divider: the emitter sits at their
           midpoint, feeding a fraction of the collector swing back in phase.
-          The pair presents a NEGATIVE RESISTANCE  −gm·X(C14)·X(C15)  in
-          parallel with the tank; with |R_neg| ≈ 2kΩ against a ~20kΩ tank it
-          starts reliably and self-limits to a steady ~1.3V carrier.
-        · R12 sets the emitter current (~0.6mA → gm ≈ 24mS). */}
+          Simulated with real BC547B / 2N3904 models and coil Q from 25 to
+          60 it starts at every TUNE setting. */}
 
     <NpnTo92 name="Q3" pcbX={12.7} pcbY={8.89} schX={5} schY={9} />
-    <resistor name="R10" resistance="27kohm" footprint="axial_p10.16mm" pcbX={5.08} pcbY={21.59} schX={5} schY={12} />
-    <resistor name="R11" resistance="10kohm" footprint="axial_p10.16mm" pcbX={13.97} pcbY={15.24} schX={5} schY={6} />
-    <resistor name="R12" resistance="1kohm" footprint="axial_p10.16mm" pcbX={8.89} pcbY={-4.45} schX={7} schY={6} />
-    <capacitor name="C6" capacitance="2.2nF" footprint="radial_p2.54mm" pcbX={15.24} pcbY={2.54} schX={7} schY={3.5} />
-    <capacitor name="C14" capacitance="680pF" footprint="radial_p2.54mm" pcbX={21.59} pcbY={2.54} schX={7.5} schY={10} />
-    <capacitor name="C15" capacitance="680pF" footprint="radial_p2.54mm" pcbX={19.05} pcbY={-4.45} schX={8.5} schY={6} />
+    <Res name="R10" resistance="56kohm" pitch={10.16} pcbX={5.08} pcbY={21.59} schX={5} schY={12} />
+    <Res name="R11" resistance="10kohm" pitch={10.16} pcbX={13.97} pcbY={15.24} schX={5} schY={6} />
+    <Res name="R12" resistance="1kohm" pitch={10.16} pcbX={8.89} pcbY={-4.45} schX={7} schY={6} />
+    <Cap name="C6" capacitance="2.2nF" pcbX={15.24} pcbY={2.54} schX={7} schY={3.5} />
+    <Cap name="C14" capacitance="680pF" pcbX={21.59} pcbY={2.54} schX={7.5} schY={10} />
+    <Cap name="C15" capacitance="680pF" pcbX={19.05} pcbY={-4.45} schX={8.5} schY={6} />
     <inductor name="L1" inductance="100uH" footprint="radial_p5mm" pcbX={38.1} pcbY={-4.45} schX={9} schY={11} />
     <VarCap name="CV1" pcbX={33.02} pcbY={21.59} schX={9} schY={7} />
 
-    <trace from=".R10 > .pin1" to="net.VMD" />
+    <trace from=".R10 > .pin1" to="net.V9" />
     <trace from=".R10 > .pin2" to=".Q3 > .base" />
     <trace from=".R11 > .pin1" to=".Q3 > .base" />
     <trace from=".R11 > .pin2" to="net.GND" />
@@ -483,52 +652,67 @@ export default () => (
     <trace from=".C14 > .pin2" to="net.TANK" />
     <trace from=".L1 > .pin1" to="net.TANK" />
     <trace from=".CV1 > .STATOR_A" to="net.TANK" />
-    {/* the coil's other end is the MODULATED supply (not ground!) */}
-    <trace from=".L1 > .pin2" to="net.VMD" />
+    {/* the coil's other end is the steady supply (V9 is RF-grounded by C2) */}
+    <trace from=".L1 > .pin2" to="net.V9" />
     <trace from=".CV1 > .ROTOR" to="net.GND" />
 
-    {/* ═══════════════════════ §6 MODULATED FINAL (Q4) ════════════════════
+    {/* ═══════════════════════ §6 MODULATED FINAL (Q4) + OUTPUT TANK ══════
         The broadcast trick: a power amplifier whose SUPPLY is the
-        modulated rail. C17 couples the steady carrier from the tank into
-        Q4's base; R14/R15 bias it; R16 (560Ω, unbypassed) sets the gain at
-        R17/R16 ≈ 3.9 — deliberately MORE than needed, so the stage is
-        overdriven and its output can only slam between ground and VMD.
-        The output amplitude therefore EQUALS the modulated rail: audio on
-        VMD becomes amplitude modulation on the carrier. Exactly one
-        transistor replaces the modulation transformer of the classic
-        kits — and the math is cleaner to explain. */}
+        modulated rail. C17 (100pF — light, so Q4 barely pulls the
+        oscillator) couples the steady carrier into Q4's base; R14/R15 bias
+        it from V9 and R16 sets ~1.7mA. Q4's collector load is a TUNED
+        TANK — L2 from VMD with CV2 ("PEAK") + C18 to ground — so the
+        collector swings symmetrically about VMD and its amplitude follows
+        VMD: audio on VMD becomes amplitude modulation on the carrier.
+        WHY A TANK, NOT A RESISTOR: an overdriven stage makes harmonics.
+        With the earlier resistor load the antenna saw the 3rd harmonic only
+        15-19 dB below the carrier; FCC §15.219(c) demands ≥ 20 dB outside
+        510-1705 kHz. The tank filters them: simulated worst case across
+        transistor, coil Q and TUNE setting is ≥ 27 dB down.
+        PEAK: after setting TUNE, turn CV2 for the strongest signal on a
+        nearby AM radio — that tunes the output tank onto your carrier. */}
 
     <NpnTo92 name="Q4" pcbX={25.4} pcbY={8.89} schX={11} schY={9} />
-    <resistor name="R14" resistance="27kohm" footprint="axial_p10.16mm" pcbX={17.78} pcbY={21.59} schX={11} schY={12} />
-    <resistor name="R15" resistance="10kohm" footprint="axial_p10.16mm" pcbX={5.08} pcbY={2.54} schX={11} schY={6} />
-    <resistor name="R16" resistance="560ohm" footprint="axial_p10.16mm" pcbX={25.4} pcbY={-13.97} schX={13} schY={6} />
-    <resistor name="R17" resistance="2.2kohm" footprint="axial_p10.16mm" pcbX={27.94} pcbY={15.24} schX={13} schY={12} />
-    <capacitor name="C17" capacitance="1nF" footprint="radial_p2.54mm" pcbX={27.94} pcbY={2.54} schX={9.5} schY={9} />
+    <Res name="R14" resistance="27kohm" pitch={10.16} pcbX={17.78} pcbY={21.59} schX={11} schY={12} />
+    <Res name="R15" resistance="10kohm" pitch={10.16} pcbX={5.08} pcbY={2.54} schX={11} schY={6} />
+    <Res name="R16" resistance="1kohm" pitch={10.16} pcbX={25.4} pcbY={-13.97} schX={13} schY={6} />
+    <Cap name="C17" capacitance="100pF" pcbX={27.94} pcbY={2.54} schX={9.5} schY={9} />
+    <inductor name="L2" inductance="100uH" footprint="radial_p5mm" pcbX={38.1} pcbY={-19.05} schX={13} schY={12} />
+    <Cap name="C18" capacitance="330pF" pcbX={22.86} pcbY={-19.05} schX={14.5} schY={11} />
+    <VarCap name="CV2" pcbX={15.24} pcbY={-22.86} schX={15} schY={7} />
 
     <trace from=".C17 > .pin1" to="net.TANK" />
     <trace from=".C17 > .pin2" to=".Q4 > .base" />
-    <trace from=".R14 > .pin1" to="net.VMD" />
+    <trace from=".R14 > .pin1" to="net.V9" />
     <trace from=".R14 > .pin2" to=".Q4 > .base" />
     <trace from=".R15 > .pin1" to=".Q4 > .base" />
     <trace from=".R15 > .pin2" to="net.GND" />
     <trace from=".Q4 > .emitter" to=".R16 > .pin1" />
     <trace from=".R16 > .pin2" to="net.GND" />
-    <trace from=".R17 > .pin1" to="net.VMD" />
-    <trace from=".R17 > .pin2" to=".Q4 > .collector" />
+    {/* the OUTPUT tank: L2 ∥ (CV2 + C18), coil fed from the modulated rail */}
+    <trace from=".Q4 > .collector" to="net.RF_OUT" />
+    <trace from=".L2 > .pin1" to="net.RF_OUT" />
+    <trace from=".L2 > .pin2" to="net.VMD" />
+    <trace from=".C18 > .pin1" to="net.RF_OUT" />
+    <trace from=".C18 > .pin2" to="net.GND" />
+    <trace from=".CV2 > .STATOR_A" to="net.RF_OUT" />
+    <trace from=".CV2 > .ROTOR" to="net.GND" />
 
     {/* ═══════════════════════ §7 ANTENNA ═════════════════════════════════
         At ~0.75 MHz the wavelength is ~400m, so a 1-2m wire is an
-        "electrically short" antenna: mostly a ~30pF capacitor to the world.
-        C16 (100pF) feeds it a controlled sliver of the modulated carrier —
-        big enough to reach across a room, small enough to stay in
-        license-exempt territory (DC input to the final ≈ 5mW, far below
-        the 100mW of e.g. FCC Part 15.219). Solder 1-2m of any insulated
-        wire to the ANT pad. */}
+        "electrically short" antenna: mostly a ~15-30pF capacitor to the
+        world. C16 (47pF) feeds it from the output tank — light enough
+        that the antenna barely detunes PEAK.
+        FCC §15.219 (US, 510-1705 kHz, no licence): (a) DC input to the
+        final ≤ 100mW — here VMD × I(Q4) ≈ 8mW; (b) antenna + feed + ground
+        lead ≤ 3m — use 1-2m of wire; (c) emissions outside 510-1705 kHz
+        ≥ 20 dB below the carrier — the output tank (§6). Other countries
+        have different rules: check yours before you transmit. */}
 
-    <capacitor name="C16" capacitance="100pF" footprint="radial_p2.54mm" pcbX={35.56} pcbY={8.89} schX={14} schY={9} />
+    <Cap name="C16" capacitance="47pF" pcbX={35.56} pcbY={8.89} schX={14} schY={9} />
     <AntennaPad name="ANT1" pcbX={40.64} pcbY={8.89} schX={16} schY={9} />
 
-    <trace from=".C16 > .pin1" to=".Q4 > .collector" name="RF_OUT" />
+    <trace from=".C16 > .pin1" to="net.RF_OUT" />
     <trace from=".C16 > .pin2" to=".ANT1 > .ANT" name="ANT" />
 
     {/* ═══════════════════════ §8 SILKSCREEN MANUAL ═══════════════════════
@@ -538,8 +722,11 @@ export default () => (
     <silkscreentext text="AM-TX" pcbX={0} pcbY={26} fontSize="1.6mm" />
     <silkscreentext text="MIC" pcbX={-36} pcbY={12.7} fontSize="1.2mm" />
     <silkscreentext text="TUNE" pcbX={33.02} pcbY={17.78} fontSize="1.2mm" />
+    <silkscreentext text="PEAK" pcbX={15.24} pcbY={-18.8} fontSize="1.2mm" />
     <silkscreentext text="ANT WIRE" pcbX={40.64} pcbY={4.06} fontSize="1.2mm" />
-    <silkscreentext text="9V" pcbX={-38.1} pcbY={-19.05} fontSize="1.2mm" />
+    <silkscreentext text="+" pcbX={-43.18} pcbY={-19.05} fontSize="1.2mm" />
+    <silkscreentext text="9V" pcbX={-40.64} pcbY={-19.05} fontSize="1.2mm" />
+    <silkscreentext text="-" pcbX={-38.1} pcbY={-19.05} fontSize="1.2mm" />
     <silkscreentext text="ON" pcbX={-30.48} pcbY={-19.05} fontSize="1.2mm" />
     <silkscreentext text="BC547: FLAT FACE DOWN" pcbX={5} pcbY={-9.53} fontSize="1.1mm" />
     <silkscreentext text="2N3904: ROTATE 180" pcbX={5} pcbY={-11.43} fontSize="1.1mm" />

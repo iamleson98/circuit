@@ -15,6 +15,12 @@
  *
  *    <platedhole />     → a plated through-hole that can carry a port name
  *    <silkscreenpath /> → silkscreen outline graphics
+ *    <courtyardrect />  → the keep-out the part's body (or the wire terminal's
+ *                         label box) needs. Every custom footprint has one, so
+ *                         tscircuit's DRC catches bodies that collide — without
+ *                         them it silently skipped these parts (it found the coil
+ *                         sitting on a resistor and the battery terminals 2.54mm
+ *                         from the switch: one solder blob from shorting the cell).
  *
  *  All pads sit on a 2.54mm (0.1") grid and use generous holes so beginners
  *  can solder them easily, and every part can also be wired off-board
@@ -26,13 +32,15 @@
  *  Battery9V   (battery)       2     pin1 = +9V (red), pin2 = GND (black)
  *  PowerSwitch (spst switch)   2     pin1, pin2 (any polarity)
  *  VolumePot   (potentiometer) 3     pin1 = CCW, pin2 = WIPER, pin3 = CW
- *  AirCoil     (inductor)      2     pin1, pin2 — 4 turns on a 5mm form
+ *  AirCoil     (inductor)      2     pin1, pin2 — 3 turns on a 5mm form
  *  TrimmerCap  (box)           2     A, B — 5-30pF tuning trimmer
  *  ElectretMic (box)           2     MIC_P (pin1), MIC_N = case (pin2)
  *  AuxJack     (box)           2     TIP, SLE — phone/MP3 player input
  *  EarTerm     (box)           2     TIP, SLE — crystal/high-Z earphone
- *  AntennaPad  (box)           1     ANT — solder 30-75cm of wire
+ *  AntennaPad  (box)           1     ANT — wire: TX ≤ 20cm, RX 30-75cm
  *  NpnTo92     (npn transistor)3     C/B/E on an in-line 0.1" TO-92 row
+ *  Cap / ECap / Led5mm        2     radial, 0.8/1.0 mm holes; ECap + = pin1 (square)
+ *  Res / AxialDiode           2     axial, 0.8 mm holes; diode cathode = pin2 (square)
  *
  *  Note: Switch / Battery / Potentiometer are imported as explicit class
  *  components because JSX's lowercase <switch> collides with the SVG
@@ -41,13 +49,27 @@
 import "@tscircuit/core"
 import type { CommonLayoutProps } from "@tscircuit/props"
 
+/** Manufacturing rules spread into every <board> of this project. tscircuit's
+ *  defaults are a fab's ABSOLUTE minimums (0.20mm-drill / 0.30mm vias with a
+ *  0.05mm ring); these are comfortable standard 2-layer rules instead. */
+export const FAB_RULES = {
+  minTraceWidth: "0.15mm",
+  minTraceToPadEdgeClearance: "0.15mm",
+  minPadEdgeToPadEdgeClearance: "0.15mm",
+  minViaEdgeToPadEdgeClearance: "0.15mm",
+  minViaHoleDiameter: "0.3mm",
+  minViaPadDiameter: "0.6mm",
+  pcbStyle: { viaHoleDiameter: "0.3mm", viaPadDiameter: "0.6mm" },
+} as const
+
 export interface PartProps extends CommonLayoutProps {
   name: string
 }
 
 /* ── 9V battery clip ─────────────────────────────────────────────────────
  * Two wire terminals 5.08mm apart (roomy for the snap's stranded leads).
- * Renders a real battery symbol in the schematic. pin1 = +, pin2 = −. */
+ * Renders a real battery symbol in the schematic. pin1 = +, pin2 = −
+ * (each board prints "+ 9V -" above the pads: red lead to the "+" hole). */
 export const Battery9V = (props: PartProps) => (
   <battery
     {...props}
@@ -58,13 +80,14 @@ export const Battery9V = (props: PartProps) => (
         <platedhole portHints={["pin2"]} pcbX={2.54} pcbY={0} holeDiameter={1.6} outerDiameter={2.5} shape="circle" />
         <silkscreenpath
           route={[
-            { x: -5.2, y: -2.6 },
-            { x: 5.2, y: -2.6 },
-            { x: 5.2, y: 2.6 },
-            { x: -5.2, y: 2.6 },
-            { x: -5.2, y: -2.6 },
+            { x: -4.3, y: -2.0 },
+            { x: 4.3, y: -2.0 },
+            { x: 4.3, y: 2.0 },
+            { x: -4.3, y: 2.0 },
+            { x: -4.3, y: -2.0 },
           ]}
         />
+        <courtyardrect pcbX={0} pcbY={0} width={8.6} height={4.0} />
       </footprint>
     }
   />
@@ -83,13 +106,14 @@ export const PowerSwitch = (props: PartProps) => (
         <platedhole portHints={["pin2"]} pcbX={2.54} pcbY={0} holeDiameter={1.2} outerDiameter={2.1} shape="circle" />
         <silkscreenpath
           route={[
-            { x: -5.2, y: -2.6 },
-            { x: 5.2, y: -2.6 },
-            { x: 5.2, y: 2.6 },
-            { x: -5.2, y: 2.6 },
-            { x: -5.2, y: -2.6 },
+            { x: -4.3, y: -2.0 },
+            { x: 4.3, y: -2.0 },
+            { x: 4.3, y: 2.0 },
+            { x: -4.3, y: 2.0 },
+            { x: -4.3, y: -2.0 },
           ]}
         />
+        <courtyardrect pcbX={0} pcbY={0} width={8.6} height={4.0} />
       </footprint>
     }
   />
@@ -117,6 +141,7 @@ export const VolumePot = (props: PartProps) => (
             { x: -4.2, y: -2.2 },
           ]}
         />
+        <courtyardrect pcbX={0} pcbY={0} width={8.4} height={4.4} />
       </footprint>
     }
   />
@@ -145,30 +170,23 @@ export const AirCoil = (props: PartProps) => (
       <footprint>
         <platedhole portHints={["pin1"]} pcbX={-2.54} pcbY={0} holeDiameter={1.2} outerDiameter={2.1} shape="circle" />
         <platedhole portHints={["pin2"]} pcbX={2.54} pcbY={0} holeDiameter={1.2} outerDiameter={2.1} shape="circle" />
-        {/* four "turns" drawn as stacked silkscreen humps */}
+        {/* three "turns" drawn as humps beside the holes (kept off the pads,
+            where a fab would clip the ink) */}
         <silkscreenpath
           route={[
-            { x: -4.6, y: 0 },
-            { x: -4.0, y: 1.4 },
-            { x: -3.2, y: 1.4 },
-            { x: -2.6, y: 0 },
-            { x: -2.0, y: 1.4 },
-            { x: -1.2, y: 1.4 },
-            { x: -0.6, y: 0 },
-            { x: 0.0, y: 1.4 },
-            { x: 0.8, y: 1.4 },
-            { x: 1.4, y: 0 },
-            { x: 2.0, y: 1.4 },
-            { x: 2.8, y: 1.4 },
-            { x: 3.4, y: 0 },
+            { x: -4.5, y: 1.4 },
+            { x: -3.9, y: 2.6 },
+            { x: -2.1, y: 2.6 },
+            { x: -1.5, y: 1.4 },
+            { x: -0.9, y: 2.6 },
+            { x: 0.9, y: 2.6 },
+            { x: 1.5, y: 1.4 },
+            { x: 2.1, y: 2.6 },
+            { x: 3.9, y: 2.6 },
+            { x: 4.5, y: 1.4 },
           ]}
         />
-        <silkscreenpath
-          route={[
-            { x: -4.6, y: 0 },
-            { x: 4.6, y: 0 },
-          ]}
-        />
+        <courtyardrect pcbX={0} pcbY={0} width={7.7} height={6.7} />
       </footprint>
     }
   />
@@ -176,9 +194,9 @@ export const AirCoil = (props: PartProps) => (
 
 /* ── tuning trimmer capacitor: 5-30pF ────────────────────────────────────
  * The TUNE knob. A small square plastic-dielectric trimmer (the green or
- * blue kind with a screw slot). 5-30pF is the classic FM-bug range: in
- * series with the 12pF padder it shifts the tank smoothly across the FM
- * band. Two lugs; either way round. (Many trimmers have a third lug that
+ * blue kind with a screw slot). 5-30pF is the classic FM-bug range:
+ * directly across the tank it sweeps the FM band (on both boards the 12pF
+ * padder C17 keeps the top end below the 108 MHz aviation band). Two lugs; either way round. (Many trimmers have a third lug that
  * is internally tied to the middle one — ignore it or solder it in
  * parallel with its neighbor, see tutorial · Troubleshooting.) */
 export const TrimmerCap = (props: PartProps) => (
@@ -207,6 +225,7 @@ export const TrimmerCap = (props: PartProps) => (
             { x: 3.2, y: 1.6 },
           ]}
         />
+        <courtyardrect pcbX={0} pcbY={0.2} width={7.2} height={4.8} />
       </footprint>
     }
     schPinArrangement={{
@@ -229,6 +248,7 @@ export const ElectretMic = (props: PartProps) => (
         <platedhole portHints={["MIC_N"]} pcbX={1.27} pcbY={0} holeDiameter={1.0} outerDiameter={1.9} shape="circle" />
         {/* circle hint for the round capsule body */}
         <silkscreencircle pcbX={0} pcbY={-2.2} radius={2.4} />
+        <courtyardrect pcbX={0} pcbY={-1.83} width={5.3} height={6.05} />
       </footprint>
     }
     schPinArrangement={{
@@ -253,13 +273,14 @@ export const AuxJack = (props: PartProps) => (
         <platedhole portHints={["SLE"]} pcbX={2.54} pcbY={0} holeDiameter={1.6} outerDiameter={2.5} shape="circle" />
         <silkscreenpath
           route={[
-            { x: -5.2, y: -2.6 },
-            { x: 5.2, y: -2.6 },
-            { x: 5.2, y: 2.6 },
-            { x: -5.2, y: 2.6 },
-            { x: -5.2, y: -2.6 },
+            { x: -4.3, y: -2.0 },
+            { x: 4.3, y: -2.0 },
+            { x: 4.3, y: 2.0 },
+            { x: -4.3, y: 2.0 },
+            { x: -4.3, y: -2.0 },
           ]}
         />
+        <courtyardrect pcbX={0} pcbY={0} width={8.6} height={4.0} />
       </footprint>
     }
     schPinArrangement={{
@@ -283,13 +304,14 @@ export const EarTerm = (props: PartProps) => (
         <platedhole portHints={["SLE"]} pcbX={2.54} pcbY={0} holeDiameter={1.6} outerDiameter={2.5} shape="circle" />
         <silkscreenpath
           route={[
-            { x: -5.2, y: -2.6 },
-            { x: 5.2, y: -2.6 },
-            { x: 5.2, y: 2.6 },
-            { x: -5.2, y: 2.6 },
-            { x: -5.2, y: -2.6 },
+            { x: -4.3, y: -2.0 },
+            { x: 4.3, y: -2.0 },
+            { x: 4.3, y: 2.0 },
+            { x: -4.3, y: 2.0 },
+            { x: -4.3, y: -2.0 },
           ]}
         />
+        <courtyardrect pcbX={0} pcbY={0} width={8.6} height={4.0} />
       </footprint>
     }
     schPinArrangement={{
@@ -300,10 +322,12 @@ export const EarTerm = (props: PartProps) => (
 )
 
 /* ── antenna wire attachment point ───────────────────────────────────────
- * ONE pad + a "wire going up" silkscreen arrow. Solder 30-75cm of
- * insulated wire (that wire IS the antenna). At ~100 MHz the wavelength
- * is ~3m, so a 75cm wire is a proper quarter-wave monopole — resonant,
- * efficient, and the length the tutorial's antenna experiments use. */
+ * ONE pad + a "wire going up" silkscreen arrow. Solder insulated wire
+ * here (that wire IS the antenna). At ~100 MHz the wavelength is ~3m, so
+ * a 75cm wire is a quarter-wave monopole — resonant and efficient.
+ *   FM-RX: 30-75cm. The RF buffer keeps the detector's bursts off it.
+ *   FM-TX: 20cm MAXIMUM. Licence-free FM (FCC §15.239) allows only about
+ *          −47 dBm EIRP; a longer wire radiates more (see transmitter §6). */
 export const AntennaPad = (props: PartProps) => (
   <chip
     {...props}
@@ -325,6 +349,7 @@ export const AntennaPad = (props: PartProps) => (
             { x: 1.3, y: 4.5 },
           ]}
         />
+        <courtyardcircle pcbX={0} pcbY={0} radius={1.55} />
       </footprint>
     }
     schPinArrangement={{
@@ -344,10 +369,152 @@ export const AntennaPad = (props: PartProps) => (
  *
  * Spreading TO-92 legs into a 0.1" row is the first skill every kit
  * builder learns — the tutorial shows it step by step. */
+/* ── NPN transistor, in-line TO-92 (BC547/BC548, 2N3904, 2N2222A) ──────
+ * tscircuit's <transistor> draws a REAL NPN symbol in the schematic and
+ * maps collector→pin1, base→pin2, emitter→pin3. The footprint is spelled
+ * out here instead of using the stock "to92_inline" string: that one has
+ * 0.72mm holes in 0.95mm-wide pads — a 0.115mm annular ring, below the
+ * 0.18mm a fab accepts for plated holes. These pads are 1.2 × 1.8mm with
+ * 0.8mm holes (0.2mm ring), still on the 0.1" row so either part fits:
+ *
+ *    BC547/BC548 (C-B-E): insert with the FLAT FACE toward −Y (silkscreen bar)
+ *    2N3904 / 2N2222A in TO-92 (E-B-C): insert rotated 180°
+ *
+ * Spreading TO-92 legs into a 0.1" row is the first skill every kit
+ * builder learns — the tutorial shows it step by step. */
 export const NpnTo92 = (props: PartProps) => (
   <transistor
     {...props}
     type="npn"
-    footprint="to92_inline_p2.54mm"
+    footprint={
+      <footprint>
+        <platedhole portHints={["pin1"]} shape="pill" pcbX={-2.54} pcbY={0} outerWidth={1.2} outerHeight={1.8} holeWidth={0.8} holeHeight={0.8} />
+        <platedhole portHints={["pin2"]} shape="pill" pcbX={0} pcbY={0} outerWidth={1.2} outerHeight={1.8} holeWidth={0.8} holeHeight={0.8} />
+        <platedhole portHints={["pin3"]} shape="pill" pcbX={2.54} pcbY={0} outerWidth={1.2} outerHeight={1.8} holeWidth={0.8} holeHeight={0.8} />
+        {/* flat face (−Y) and the rounded back of the body */}
+        <silkscreenpath route={[{ x: -2.2, y: -1.6 }, { x: 2.2, y: -1.6 }]} />
+        <silkscreenpath
+          route={[40, 60, 80, 100, 120, 140].map((a) => ({
+            x: 2.5 * Math.cos((a * Math.PI) / 180),
+            y: 2.5 * Math.sin((a * Math.PI) / 180),
+          }))}
+        />
+        {/* pin-1 (collector) dot */}
+        <silkscreenpath route={[{ x: -3.6, y: 0.4 }, { x: -3.6, y: -0.4 }]} />
+        <courtyardrect pcbX={0} pcbY={0.45} width={6.8} height={4.6} />
+      </footprint>
+    }
   />
 )
+
+/* ── capacitors and LEDs, with holes sized for real leads ──────────────────
+ * tscircuit's stock "radial_p2.54mm" footprint drills 0.635 mm holes: a
+ * 0.5-0.6 mm capacitor or LED leg barely fits once the hole is plated, and
+ * it has no polarity mark. These keep the stock pad positions and body
+ * outlines (so placement and routing are unchanged) but drill lead + 0.2 mm
+ * or more, and mark polarity:
+ *   Cap      ceramic / film, any way round           0.8 mm holes
+ *   ECap     aluminium electrolytic: + = pin1 = the SQUARE pad, marked "+";
+ *            the can's stripe (−) goes on the other side   0.8 mm holes
+ *   Led5mm   anode = pin1 (round pad, long leg); cathode = pin2 (square
+ *            pad, the flat on the rim)               1.0 mm holes (0.5 mm
+ *            square legs are 0.71 mm corner to corner) */
+const rimPath = (r: number, from: number, to: number) =>
+  Array.from({ length: 41 }, (_, i) => {
+    const a = ((from + ((to - from) * i) / 40) * Math.PI) / 180
+    return { x: r * Math.cos(a), y: r * Math.sin(a) }
+  })
+
+export const Cap = (props: PartProps & { capacitance: string }) => (
+  <capacitor
+    {...props}
+    capacitance={props.capacitance}
+    footprint={
+      <footprint>
+        <platedhole portHints={["pin1"]} pcbX={-1.27} pcbY={0} holeDiameter={0.8} outerDiameter={1.4} shape="circle" />
+        <platedhole portHints={["pin2"]} pcbX={1.27} pcbY={0} holeDiameter={0.8} outerDiameter={1.4} shape="circle" />
+        <silkscreenpath route={rimPath(2.6, 0, 360)} />
+        <courtyardcircle pcbX={0} pcbY={0} radius={2.79} />
+      </footprint>
+    }
+  />
+)
+
+export const ECap = (props: PartProps & { capacitance: string; pitch: 2.54 | 5 }) => {
+  const big = props.pitch === 5
+  const p = big ? 5 : 2.54
+  const r = big ? 5.1 : 2.6
+  const pad = big ? 1.6 : 1.5
+  const { pitch: _p, ...rest } = props
+  return (
+    <capacitor
+      {...rest}
+      capacitance={props.capacitance}
+      polarized
+      footprint={
+        <footprint>
+          <platedhole portHints={["pin1", "pos"]} pcbX={-p / 2} pcbY={0} holeDiameter={0.8} rectPadWidth={pad} rectPadHeight={pad} holeShape="circle" padShape="rect" holeOffsetX={0} holeOffsetY={0} shape="circular_hole_with_rect_pad" />
+          <platedhole portHints={["pin2", "neg"]} pcbX={p / 2} pcbY={0} holeDiameter={0.8} outerDiameter={pad} shape="circle" />
+          <silkscreenpath route={rimPath(r, 0, 360)} />
+          {/* "+" beside the square pad */}
+          <silkscreenpath route={[{ x: -p / 2 - 0.45, y: r * 0.55 }, { x: -p / 2 + 0.45, y: r * 0.55 }]} />
+          <silkscreenpath route={[{ x: -p / 2, y: r * 0.55 - 0.45 }, { x: -p / 2, y: r * 0.55 + 0.45 }]} />
+          <courtyardcircle pcbX={0} pcbY={0} radius={big ? 5.25 : 2.79} />
+        </footprint>
+      }
+    />
+  )
+}
+
+export const Led5mm = (props: PartProps & { color: string }) => (
+  <led
+    {...props}
+    footprint={
+      <footprint>
+        <platedhole portHints={["pin1", "anode"]} pcbX={-1.27} pcbY={0} holeDiameter={1.0} outerDiameter={1.6} shape="circle" />
+        <platedhole portHints={["pin2", "cathode"]} pcbX={1.27} pcbY={0} holeDiameter={1.0} rectPadWidth={1.6} rectPadHeight={1.6} holeShape="circle" padShape="rect" holeOffsetX={0} holeOffsetY={0} shape="circular_hole_with_rect_pad" />
+        {/* the rim, with its flat on the cathode side */}
+        <silkscreenpath route={rimPath(2.9, 60, 300)} />
+        <silkscreenpath route={[{ x: 1.45, y: 2.51 }, { x: 1.45, y: -2.51 }]} />
+        <courtyardcircle pcbX={0} pcbY={0} radius={2.95} />
+      </footprint>
+    }
+  />
+)
+
+/* ── axial resistors and diodes (lying flat), 0.8 mm holes ─────────────────
+ * Same pads, pitch and courtyard as the stock "axial_pX" footprints, but
+ * 0.8 mm holes (¼ W resistor legs are ≈ 0.6 mm; the stock 0.7 mm is tight),
+ * and diodes show which end is which: the cathode (pin2, the banded end of
+ * the real diode) gets the SQUARE pad and the bar of a ▶| symbol. */
+const axialFootprint = (p: number, diode: boolean) => (
+  <footprint>
+    <platedhole portHints={diode ? ["pin1", "anode"] : ["pin1"]} pcbX={-p / 2} pcbY={0} holeDiameter={0.8} outerDiameter={1.4} shape="circle" />
+    {diode ? (
+      <platedhole portHints={["pin2", "cathode"]} pcbX={p / 2} pcbY={0} holeDiameter={0.8} rectPadWidth={1.4} rectPadHeight={1.4} holeShape="circle" padShape="rect" holeOffsetX={0} holeOffsetY={0} shape="circular_hole_with_rect_pad" />
+    ) : (
+      <platedhole portHints={["pin2"]} pcbX={p / 2} pcbY={0} holeDiameter={0.8} outerDiameter={1.4} shape="circle" />
+    )}
+    {diode ? (
+      <>
+        <silkscreenpath route={[{ x: -(p / 2 - 1.75), y: 0 }, { x: -0.7, y: 0 }]} />
+        <silkscreenpath route={[{ x: 0.7, y: 0 }, { x: p / 2 - 1.75, y: 0 }]} />
+        <silkscreenpath route={[{ x: -0.7, y: 0.8 }, { x: 0.7, y: 0 }, { x: -0.7, y: -0.8 }, { x: -0.7, y: 0.8 }]} />
+        <silkscreenpath route={[{ x: 0.7, y: 0.8 }, { x: 0.7, y: -0.8 }]} />
+      </>
+    ) : (
+      <silkscreenpath route={[{ x: -(p / 2 - 1.75), y: 0 }, { x: p / 2 - 1.75, y: 0 }]} />
+    )}
+    <courtyardrect pcbX={0} pcbY={0} width={p + 2.0} height={2.1} />
+  </footprint>
+)
+
+export const Res = (props: PartProps & { resistance: string; pitch: 7.62 | 10.16 }) => {
+  const { pitch, ...rest } = props
+  return <resistor {...rest} resistance={props.resistance} footprint={axialFootprint(pitch, false)} />
+}
+
+export const AxialDiode = (props: PartProps & { pitch: 7.62 | 10.16 }) => {
+  const { pitch, ...rest } = props
+  return <diode {...rest} footprint={axialFootprint(pitch, true)} />
+}

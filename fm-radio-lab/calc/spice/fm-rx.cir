@@ -1,0 +1,85 @@
+
+* Standard vendor SPICE models (ON Semi / Fairchild 2N3904 & 2N2222A; NXP BC547B)
+.model Q2N3904 NPN(IS=6.734f BF=416.4 NE=1.259 ISE=6.734f IKF=66.78m BR=.7371 NC=2 RC=1 RB=10 VAF=74.03 CJC=3.638p MJC=.3085 VJC=.75 FC=.5 CJE=4.493p MJE=.2593 VJE=.75 TR=239.5n TF=301.2p)
+.model Q2N2222A NPN(IS=14.34f BF=255.9 NE=1.307 ISE=14.34f IKF=.2847 BR=6.092 NC=2 RC=1 RB=10 VAF=74.03 CJC=7.306p MJC=.3416 VJC=.75 FC=.5 CJE=22.01p MJE=.377 VJE=.75 TR=46.91n TF=411.1p)
+.model BC547B NPN(IS=2.39E-14 NF=1.008 ISE=3.545E-15 NE=1.541 BF=294.3 IKF=0.1357 VAF=63.2 NR=1.004 ISC=6.272E-14 NC=1.243 BR=7.946 IKR=0.1144 VAR=25.9 RB=1 RE=0.4683 RC=0.85 CJE=1.358E-11 VJE=0.65 MJE=0.3279 TF=4.391E-10 CJC=3.728E-12 VJC=0.3997 MJC=0.2955 TR=1E-9 FC=0.9579)
+.model D1N34A D(IS=1.3e-7 N=1.3 RS=7 CJO=0.6p VJ=0.3 M=0.4 TT=2n)
+.model D1N4148 D(IS=2.52n N=1.752 RS=0.568 CJO=4p M=0.4 VJ=0.75 TT=20n)
+.model LEDG D(IS=4.7e-20 N=2 RS=5 CJO=20p)
+
+* FM Radio Lab FM-RX — generated from the routed board by board_to_spice.mjs
+VBT1 bt1_emf 0 9
+RBT1_INT bt1_emf v9 1.5
+C1 v9 0 0.000047
+C2 v9 c2_lead 1e-7
+LC2_LEAD c2_lead 0 5e-9
+DLED1 n_led1_pin1 0 LEDG
+R1 v9 n_led1_pin1 2200
+VANT1 ant1_emf 0 0
+RANT1_RAD ant1_emf ant1_w 3.7935800000000004
+CANT1_WIRE ant1_w n_ant1_ant 2.9011853229458018e-12
+RANT1_LEAK n_ant1_ant 0 1meg
+C3 n_ant1_ant c3_lead 1e-9
+LC3_LEAD c3_lead q5e 5e-9
+L1 tank l1_s 6.000000000000001e-8
+RL1_LOSS l1_s v9 0.3695
+CTRIM1 tank 0 1.5e-11
+C15 v9 c15_lead 1e-7
+LC15_LEAD c15_lead 0 5e-9
+C16 v9 c16_lead 1e-9
+LC16_LEAD c16_lead 0 5e-9
+C17 tank c17_lead 1.2e-11
+LC17_LEAD c17_lead 0 5e-9
+R22 tank v9 1000
+Q5 q5c q5b q5e BC547B
+R18 q5e 0 1000
+R19 v9 q5b 47000
+R20 q5b 0 10000
+R21 v9 q5c 1000
+C21 q5b c21_lead 1e-9
+LC21_LEAD c21_lead 0 5e-9
+C22 q5c c22_lead 1e-12
+LC22_LEAD c22_lead tank 5e-9
+Q1 tank oscb rfe Q2N2222A
+R2 v9 oscb 15000
+R3 oscb 0 3900
+C4 oscb c4_lead 2.2e-10
+LC4_LEAD c4_lead 0 5e-9
+R4 rfe 0 470
+C5 rfe c5_lead 4.7e-11
+LC5_LEAD c5_lead 0 5e-9
+C6 tank c6_lead 2.2e-11
+LC6_LEAD c6_lead rfe 5e-9
+Q2 q2c q2b 0 BC547B
+Q3 q3c q3b 0 BC547B
+R5 v9 q2c 4700
+R6 v9 q3c 4700
+C7 q2c q3b 1e-9
+C8 q3c q2b 1e-9
+R9 v9 q2b 18000
+R8 v9 q3b 11000
+R10 q2c oscb 4700
+R11 oscb 0 1000
+R12 rfe af1 4700
+C9 af1 0 1e-8
+R13 af1 af2 4700
+C10 af2 0 1e-8
+RV1_A af2 n_c11_pin1 5000
+RV1_B n_c11_pin1 0 5000
+C11 n_c11_pin1 q4b 1e-7
+Q4 q4c q4b n_q4_pin3 BC547B
+R14 v9 q4b 220000
+R15 q4b 0 47000
+R16 n_q4_pin3 q4e2 120
+R23 q4e2 0 470
+C23 q4e2 0 0.000047
+R17 v9 q4c 3300
+C12 aout ear 0.000047
+Q6 v9 q4c aout BC547B
+R24 aout 0 1500
+REAR1 ear 0 32  ; 32 Ω earbud
+CPAR_TANK tank 0 2p
+INOISE 0 tank 0
+IUNLATCH q2b 0 PULSE(0 3m 0 10n 10n 2u 1)
+.tran 0.05n 100u
+.end

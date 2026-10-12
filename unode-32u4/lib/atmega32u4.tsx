@@ -24,8 +24,14 @@
  *
  *  Pin-label uniqueness matters: tscircuit turns every label into a
  *  *selectable port* (e.g. `.U1 > .VCC1`). Labels must therefore be unique
- *  per chip — that's why the three VCC pins are named VCC1/VCC2/VCC3 and
- *  the four GND pins GND1..GND4.
+ *  per chip — that's why the two VCC pins are VCC1/VCC2, the two AVCC pins
+ *  AVCC1/AVCC2 and the four GND pins GND1..GND4.
+ *
+ *  ⚠️ PIN 24 IS AVCC, NOT VCC. The 32U4 has TWO analog-supply pins: 24
+ *  (ADC8-ADC13 side) and 44 (ADC0-ADC7 side) — datasheet Fig. 1-1, and the
+ *  note under Fig. 24-10: "the same circuitry should be used for AVCC
+ *  filtering on the ADC8-ADC13 side". Only pins 14 and 34 are VCC.
+ *  (An earlier revision of this file labelled pin 24 "VCC2" — wrong.)
  */
 import "@tscircuit/core"
 import type { CommonLayoutProps } from "@tscircuit/props"
@@ -56,7 +62,7 @@ export const ATMEGA32U4_PINOUT = {
   // ── BOTTOM EDGE (left → right) ───────────────────────────────────────
   pin12: "PB7", // OC0A/OC1C — Arduino D11 (PWM)
   pin13: "RESET", // active-low reset (10k pull-up + button)
-  pin14: "VCC1", // +5V #1 (needs its own 100nF decoupler)
+  pin14: "VCC1", // digital +5V #1 (needs its own 100nF decoupler)
   pin15: "GND1",
   pin16: "XTAL2", // 16MHz crystal
   pin17: "XTAL1", // 16MHz crystal
@@ -67,7 +73,7 @@ export const ATMEGA32U4_PINOUT = {
   pin22: "PD5", // XCK1/CTS — TX LED pin (firmware-driven)
   // ── RIGHT EDGE (bottom → top) ────────────────────────────────────────
   pin23: "GND2",
-  pin24: "VCC2", // +5V #2 (needs its own 100nF decoupler)
+  pin24: "AVCC1", // analog supply #1 (ADC8-13 side) — filtered, 100nF at pin
   pin25: "PD4", // ICP1/ADC8 — Arduino D4 / A6
   pin26: "PD6", // T1/ADC9 — Arduino D12 / A11
   pin27: "PD7", // OC4D/ADC10 — Arduino D6 / A7 (PWM)
@@ -78,7 +84,7 @@ export const ATMEGA32U4_PINOUT = {
   pin32: "PC7", // ICP3/CLK0/OC4A — Arduino D13, the "L" LED
   pin33: "PE2", // #HWB — hardware bootloader pin (active-low, needs pull-up)
   // ── TOP EDGE (right → left) ──────────────────────────────────────────
-  pin34: "VCC3", // +5V #3 (needs its own 100nF decoupler)
+  pin34: "VCC2", // digital +5V #2 (needs its own 100nF decoupler)
   pin35: "GND3",
   pin36: "PF7", // ADC7/TDI — Arduino A0
   pin37: "PF6", // ADC6/TDO — Arduino A1
@@ -88,7 +94,7 @@ export const ATMEGA32U4_PINOUT = {
   pin41: "PF0", // ADC0 — Arduino A5
   pin42: "AREF", // ADC reference (100nF to GND if you use it)
   pin43: "GND4",
-  pin44: "AVCC", // analog supply (feed through a ferrite bead)
+  pin44: "AVCC2", // analog supply #2 (ADC0-7 side) — filtered, 100nF at pin
 } as const
 
 export const Atmega32U4 = (props: Atmega32U4Props) => (
@@ -114,8 +120,8 @@ export const Atmega32U4 = (props: Atmega32U4Props) => (
         direction: "top-to-bottom",
         pins: [
           "VBUS", "UVCC", "UCAP", "UGND", "DMINUS", "DPLUS",
-          "XTAL1", "XTAL2", "RESET", "PE2", "AREF", "AVCC",
-          "VCC1", "VCC2", "VCC3", "GND1", "GND2", "GND3", "GND4",
+          "XTAL1", "XTAL2", "RESET", "PE2", "AREF", "AVCC1", "AVCC2",
+          "VCC1", "VCC2", "GND1", "GND2", "GND3", "GND4",
         ],
       },
       rightSide: {

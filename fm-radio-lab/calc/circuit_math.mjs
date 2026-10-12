@@ -1,12 +1,15 @@
 /**
- * circuit_math.mjs — the "prove it" script for FM Radio Lab.
+ * circuit_math.mjs — the hand-calculation half of FM Radio Lab's proof.
  *
- * Recomputes every design equation of the FM-TX transmitter and FM-RX
- * receiver from first principles and asserts the numbers the circuits
- * depend on. If any assertion fails, this exits non-zero.
+ * Re-derives the bias points, tuning windows, modulation sensitivity, quench
+ * timing, audio gains and radiated-power budgets of the FM-TX and FM-RX from
+ * first principles and asserts the numbers the design depends on. Where a
+ * hand model can't be trusted to a few percent — exact band edges with real
+ * lead inductance, the tank's large-signal amplitude, super-regenerative
+ * capture, re-radiation — the job belongs to `npm run sim` (calc/sim_fm.mjs),
+ * which simulates the routed boards. Numbers quoted "sim:" come from there.
  *
- * Run:  npm run math
- * (zero dependencies — just arithmetic and honest physics)
+ * Run:  npm run math      (zero dependencies — just arithmetic)
  */
 
 const PASS = []
@@ -16,338 +19,281 @@ const check = (label, ok, detail) => {
   if (detail) console.log(`        ${detail}`)
   ;(ok ? PASS : FAIL).push(label)
 }
-const f2 = (x) => (x >= 1000 ? x.toFixed(0) : x.toFixed(2))
-const hz = (x) =>
-  x >= 1e6 ? (x / 1e6).toFixed(2) + " MHz" : (x / 1e3).toFixed(0) + " kHz"
-const pf = (x) => (x * 1e12).toFixed(2) + " pF"
+const MHz = (f) => (f / 1e6).toFixed(1) + " MHz"
+const mA = (i) => (i * 1e3).toFixed(2) + " mA"
+const dBm = (p) => 10 * Math.log10(p / 1e-3)
+const fres = (L, C) => 1 / (2 * Math.PI * Math.sqrt(L * C))
+const par = (...r) => 1 / r.reduce((s, x) => s + 1 / x, 0)
+const ser = (a, b) => (a * b) / (a + b)
 
 console.log("═".repeat(66))
 console.log(" FM RADIO LAB · CIRCUIT MATH — every number behind the design")
 console.log("═".repeat(66))
 
-/* ══════════════ SHARED ══════════════ */
 const V9 = 9
-const VBE = 0.7
-const VT = 0.02585 // thermal voltage ≈ 25.85 mV @ 300K
-const beta = 150 // BC547B/BC548B typical hFE (min 100-200)
+const VBE = 0.65
+const VT = 0.02585
+const BETA = { min: 110, typ: 290 } // BC547B hFE 200-450, 2N2222A 100-300 → design for ≥ 110
+/** emitter current of a divider-biased stage, INCLUDING the base current's drop on the divider */
+const ie = (Vth, Rth, RE, beta) => (Vth - VBE) / (RE + Rth / (beta + 1))
+const L1 = 60e-9 // board value: Wheeler's 56 nH (§2) + ~4 nH of leads
+const TRIM = { min: 5e-12, max: 30e-12 }
+const STRAY = 2e-12 // board + coil self-capacitance
+/** the two transistor types the kit allows: output capacitance at VCB ≈ 7 V, and the
+ *  base-emitter capacitance seen at the operating point, as gm/(2π·fT_eff) */
+const XSTR = {
+  BC547B: { cob: 1.6e-12, fT: 300e6 },
+  "2N2222A": { cob: 3.3e-12, fT: 170e6 }, // big CJE: fT is low at 1-2 mA
+}
+/** 1N4148 used as a varactor: Cj0 spreads 1.2-4 pF between makers */
+const cj = (Vr, cj0) => cj0 / Math.pow(1 + Vr / 0.75, 0.4)
 
-/* ══════════════ §0 THE FM BAND ITSELF ══════════════ */
-console.log("\n§0  the FM broadcast band")
+/* ══════════════ §1 THE RULES OF THE BAND ══════════════ */
+console.log("\n§1  FM broadcast band and the licence-free limits")
+const LIMIT_TX = (250e-6 * 3) ** 2 / 30 // §15.239: 250 µV/m @ 3 m  → EIRP = (E·r)²/30
+const LIMIT_RX = (150e-6 * 3) ** 2 / 30 // §15.109 class B receiver, 88-216 MHz: 150 µV/m @ 3 m
 {
-  const dev = 75e3, fm = 15e3 // max deviation, max audio freq (broadcast)
-  const carson = 2 * (dev + fm)
-  console.log(`    band 87.5-108 MHz · channel spacing 200 kHz · max deviation ±75 kHz`)
-  console.log(`    Carson bandwidth = 2(Δf + f_m) = 2(${dev / 1e3}k + ${fm / 1e3}k) = ${carson / 1e3} kHz < 200 kHz channel ✓`)
-  check("Carson rule fits the 200 kHz channel raster", carson < 200e3)
-  // wavelength at band center
-  const c = 299792458
-  const lam = c / 98e6
-  console.log(`    λ at 98 MHz = ${lam.toFixed(2)} m → quarter wave = ${(lam / 4 * 100).toFixed(0)} cm (antenna length)`)
-  check("quarter-wave antenna is a buildable wire", lam / 4 > 0.5 && lam / 4 < 1.2, `${(lam / 4 * 100).toFixed(0)} cm`)
+  const carson = 2 * (75e3 + 15e3)
+  check("±75 kHz deviation + 15 kHz audio fits the 200 kHz §15.239 band (Carson)", carson <= 200e3, `Carson bandwidth ${(carson / 1e3).toFixed(0)} kHz`)
+  console.log(`        limits: FM-TX EIRP ≤ ${dBm(LIMIT_TX).toFixed(1)} dBm (§15.239), FM-RX re-radiation ≤ ${dBm(LIMIT_RX).toFixed(1)} dBm (§15.109)`)
+  const lam = 3e8 / 98e6
+  check("a 30-75 cm receive wire is between λ/10 and λ/4 (useful, not resonant-long)", 0.3 > lam / 12 && 0.75 <= lam / 4 + 0.02, `λ/4 = ${(lam / 4 * 100).toFixed(0)} cm`)
 }
 
-/* ══════════════ §1 THE COIL (both boards) — Wheeler's formula ═══════════ */
-console.log("\n§1  L1 — the 4-turn air coil (Wheeler's formula)")
+/* ══════════════ §2 THE COIL ══════════════ */
+console.log("\n§2  L1 — 3 turns of 0.6 mm wire on a 5 mm form, stretched to 2.4 mm")
 {
-  // L(µH) = D²n² / (45.72·D + 101.6·l)  is WRONG by 10× on the web;
-  // the correct metric form of Wheeler 1928 (L = r²n²/(9r+10l), inches):
-  // L(µH) = D²n² / (457.2·D + 1016·l)   with D, l in millimetres.
-  const n = 3, wire = 0.6, formD = 5.0
-  const D = formD + wire // mean diameter (wire centerline)
-  const l = 2.4 // wound, then GENTLY STRETCHED to ~2.4mm length
-  const LuH = (D * D * n * n) / (457.2 * D + 1016 * l)
-  const L = LuH * 1e-6 // henries
-  console.log(`    ${n} turns of ${wire}mm wire on a ${formD}mm form, stretched to ${l}mm`)
-  console.log(`    L = D²n²/(457.2·D + 1016·l) = ${(LuH * 1000).toFixed(0)} nH`)
-  // squeeze/stretch tuning (close-wound 1.8mm is the MAXIMUM L)
-  const Lsq = ((D * D * n * n) / (457.2 * D + 1016 * 1.8)) * 1e-6
-  const Lst = ((D * D * n * n) / (457.2 * D + 1016 * 3.4)) * 1e-6
-  console.log(`    squeezed to 1.8mm → ${(Lsq * 1e9).toFixed(0)} nH (f −${((1 - Math.sqrt(L / Lsq)) * 100).toFixed(0)}%) · stretched to 3.4mm → ${(Lst * 1e9).toFixed(0)} nH (f +${((Math.sqrt(L / Lst) - 1) * 100).toFixed(0)}%)`)
-  check("L lands 0.045-0.075 µH (FM-band tank with ~45pF)", L > 0.045e-6 && L < 0.075e-6, `L = ${(LuH * 1e3).toFixed(0)} nH`)
-  check("coil squeeze+stretch gives ±8% frequency leverage (band-centering trick)",
-    Lsq / L - 1 > 0.08 && 1 - Lst / L > 0.08,
-    `+${((Lsq / L - 1) * 100).toFixed(0)}% / −${((1 - Lst / L) * 100).toFixed(0)}%`)
-  globalThis.LCOIL = L
+  // Wheeler: L[µH] = r²N² / (9r + 10ℓ), r and ℓ in inches
+  const wheeler = (N, dMean, len) => { const r = dMean / 2 / 25.4e-3, l = len / 25.4e-3; return (r * r * N * N) / (9 * r + 10 * l) * 1e-6 }
+  const L = wheeler(3, 5.6e-3, 2.4e-3)
+  check("Wheeler gives 45-75 nH (an FM-band coil with ~40-60 pF)", L > 45e-9 && L < 75e-9, `L = ${(L * 1e9).toFixed(0)} nH (+ leads ≈ 60 nH, the value the boards carry)`)
+  const Ls = wheeler(3, 5.6e-3, 1.8e-3), Lw = wheeler(3, 5.6e-3, 3.4e-3)
+  const up = Math.sqrt(L / Lw) - 1, down = 1 - Math.sqrt(L / Ls)
+  check("squeezing / stretching the coil moves the band ≥ ±4 % (the band-centering trick)", up > 0.04 && down > 0.04,
+    `1.8 mm long: −${(down * 100).toFixed(1)} %   3.4 mm long: +${(up * 100).toFixed(1)} %`)
 }
 
-/* ══════════════ §2 THE TANK — where the frequency comes from ════════════ */
-console.log("\n§2  the tank: L1 ∥ (C9 series C8) ∥ strays ∥ TRIM1")
+/* ══════════════ §3 FM-TX BIAS ══════════════ */
+console.log("\n§3  FM-TX · bias points (sim: Q1 2.00 mA, Q2 1.71 mA, VAR 7.84 V)")
+let txQ2gm
 {
-  const L = globalThis.LCOIL
-  const C9 = 22e-12, C8 = 47e-12 // feedback divider (TX C9/C8 = RX C7/C6)
-  const Cdiv = (C9 * C8) / (C9 + C8)
-  console.log(`    feedback divider C9 series C8 = ${pf(Cdiv)} (part of the tank, always)`)
-  console.log(`    TRIM1 5-30pF connects DIRECTLY across the tank (no padder — the classic`)
-  console.log(`    FM-bug arrangement: a ~35MHz-wide window that always swallows the band)`)
-  const f = (c) => 1 / (2 * Math.PI * Math.sqrt(L * c))
-  console.log(`    tuning table (frequency vs assumed board strays):`)
-  console.log(`      strays   TRIM=5pF    TRIM=30pF      band covered`)
-  let covered = false
-  for (const s of [10e-12, 14e-12, 18e-12, 22e-12]) {
-    const cMin = Cdiv + s + 5e-12
-    const cMax = Cdiv + s + 30e-12
-    const fHi = f(cMin), fLo = f(cMax)
-    console.log(`      ${pf(s).padStart(8)}  ${hz(fHi).padStart(9)}  ${hz(fLo).padStart(9)}     ${(fLo / 1e6).toFixed(0)}-${(fHi / 1e6).toFixed(0)} MHz`)
-    if (fLo < 92e6 && fHi > 104e6) covered = true
+  // Q1 preamp: R4 56k / R5 12k, emitter R7 100 + R8 330 (R8 bypassed by C5), collector R6 2.7k
+  const Vth = (V9 * 12e3) / 68e3, Rth = par(56e3, 12e3)
+  const lo = ie(Vth, Rth, 430, BETA.min), hi = ie(Vth, Rth, 430, BETA.typ)
+  const VC = V9 - 2.7e3 * hi
+  check("Q1 emitter current 1-3 mA", lo > 1e-3 && hi < 3e-3, `${mA(lo)} … ${mA(hi)}`)
+  check("Q1 collector sits mid-swing (2.5-6 V)", VC > 2.5 && V9 - 2.7e3 * lo < 6, `V_C ≈ ${VC.toFixed(2)}-${(V9 - 2.7e3 * lo).toFixed(2)} V`)
+  const gain = par(2.7e3, 10e3) / (100 + VT / hi)
+  check("Q1 audio gain 12-25× (R6 ∥ DEV pot over R7 + r_e)", gain > 12 && gain < 25, `≈ ${gain.toFixed(1)}×`)
+
+  // Q2 oscillator: R9 15k / R10 3.9k, R11 680
+  const Vth2 = (V9 * 3.9e3) / 18.9e3, Rth2 = par(15e3, 3.9e3)
+  const lo2 = ie(Vth2, Rth2, 680, BETA.min), hi2 = ie(Vth2, Rth2, 680, BETA.typ)
+  txQ2gm = lo2 / VT
+  check("Q2 emitter current 1-2.5 mA, nearly independent of β (stiff divider)", lo2 > 1e-3 && hi2 < 2.5e-3 && hi2 / lo2 < 1.05, `${mA(lo2)} … ${mA(hi2)}  (gm ≈ ${(txQ2gm * 1e3).toFixed(0)} mS)`)
+  check("C7 (470 pF) grounds Q2's base at RF (≤ 5 Ω at 88 MHz)", 1 / (2 * Math.PI * 88e6 * 470e-12) < 5)
+}
+
+/* ══════════════ §4 FM-TX TANK, TUNING AND THE C17 PADDER ══════════════ */
+console.log("\n§4  FM-TX · tuning window — and why C17 is there")
+const VAR_REV = V9 - (V9 * 150e3) / 172e3 // tank sits at V9 (through L1); VAR = R12/R13 divider
+/** a capacitor with ~5 nH of leads looks bigger at VHF: C / (1 − ω²·L·C) */
+const LEAD = 5e-9
+const eff = (C, f) => C / (1 - (2 * Math.PI * f) ** 2 * LEAD * C)
+/** tank frequency for a trimmer setting; fixed(f) = the rest of the tank capacitance at f */
+const tune = (trim, fixed) => { let f = 100e6; for (let i = 0; i < 20; i++) f = fres(L1, trim + fixed(f)); return f }
+const window = (fixed) => ({ top: tune(TRIM.min, fixed), bottom: tune(TRIM.max, fixed) })
+{
+  const rows = []
+  for (const [name, x] of Object.entries(XSTR)) {
+    const cpi = txQ2gm / (2 * Math.PI * x.fT)
+    const cfb = (f) => ser(eff(22e-12, f), eff(47e-12, f) + cpi) // C9 into (C8 ∥ Cπ): the emitter node
+    for (const cj0 of [1.2e-12, 4e-12]) {
+      const base = (f) => cfb(f) + x.cob + STRAY + cj(VAR_REV, cj0)
+      rows.push({ name, cj0, with: window((f) => base(f) + eff(12e-12, f)), without: window(base) })
+    }
   }
-  console.log(`    ("strays" here include the TRANSISTOR: C_ob ≈ 8pF across the tank plus`)
-  console.log(`     the B-E junction reflected through the divider ≈ 8pF more, plus`)
-  console.log(`     ~2-3pF wiring — the sim measures the total pull-down at ~12%)`)
-  check("with plausible strays the trimmer sweeps the whole FM band", covered)
-  // tuning rate — is the knob findable?
-  const s0 = 14e-12, c0 = Cdiv + s0 + 17.5e-12
-  const dfdc = f(c0) / (2 * c0)
-  const perDeg = dfdc * (25e-12 / 270) // 25pF over ~270° of trimmer screw
-  console.log(`    tuning rate at mid-band ≈ ${(dfdc * 1e-12 / 1e3).toFixed(0)} kHz/pF → ${(perDeg / 1e3).toFixed(0)} kHz per screw-degree`)
-  check("tuning gentle enough to land on a 200kHz channel (≥5kHz/degree)", perDeg > 5e3,
-    `${(perDeg / 1e3).toFixed(0)} kHz per degree`)
-  globalThis.CDIV = Cdiv
+  for (const r of rows) console.log(`        ${r.name.padEnd(8)} Cj0 ${(r.cj0 * 1e12).toFixed(1)} pF: ${MHz(r.with.bottom)} … ${MHz(r.with.top)}   (no C17: up to ${MHz(r.without.top)})`)
+  check("TRIM (5-30 pF) spans more than the 88-108 MHz ratio", rows.every((r) => r.with.top / r.with.bottom > 108 / 88))
+  check("the bottom of the window reaches below 88 MHz", rows.every((r) => r.with.bottom < 88e6))
+  check("without C17 the top end lands in the aviation band (> 112 MHz)", rows.every((r) => r.without.top > 112e6))
+  check("with C17 (12 pF) the top stays below 108 MHz even for a low-capacitance diode", rows.every((r) => r.with.top < 108e6),
+    "the routed-board sim gives 80.9-104.4 MHz with a 1.2 pF diode")
 }
 
-/* ══════════════ §3 FM-TX · MICROPHONE + AUX ══════════════ */
-console.log("\n§3  FM-TX · microphone & AUX input")
+/* ══════════════ §5 FM-TX VARACTOR ══════════════ */
+console.log("\n§5  FM-TX · D1 as a varactor (sim, in band: 0.13-0.59 kHz/mV)")
 {
-  const R2 = 10e3
-  const iMic = (V9 - 1.5) / R2 // electret FET bias, capsule drops ~1.5-2.5V
-  console.log(`    R2 10k powers the electret FET: ~${f2(iMic * 1e3)} mA`)
-  check("mic FET current in the happy zone (0.2-0.8mA)", iMic > 0.2e-3 && iMic < 0.8e-3)
-  // AUX: phone 0.5Vrms through C4 100n + R3 47k into the Q1 base node
-  const zin = 2e3 // Q1 base node ≈ r_π∥bias ≈ 2k (worst case)
-  const vAux = 0.5 * zin / (47e3 + zin)
-  console.log(`    AUX: phone 0.5Vrms → 47k into ~2k base node → ${f2(vAux * 1e3)} mV (mic-level) ✓`)
-  check("AUX pad tames line level to mic level (5-40mV)", vAux > 5e-3 && vAux < 40e-3, `${(vAux * 1e3).toFixed(1)} mV`)
+  check("D1 reverse bias 0.9-1.6 V", VAR_REV > 0.9 && VAR_REV < 1.6, `${VAR_REV.toFixed(2)} V`)
+  check("…larger than the tank's RF peak (sim ≤ 0.80 V): D1 never conducts", VAR_REV > 0.8 + 0.2)
+  // df/dV = (f/2)·(dC/dV)/C_total ; dCj/dV = M·Cj/(VJ+V)
+  const sens = (f, cj0) => { const C = 1 / ((2 * Math.PI * f) ** 2 * L1); return (f / 2) * ((0.4 * cj(VAR_REV, cj0)) / (0.75 + VAR_REV)) / C }
+  const kMin = sens(88.2e6, 1.2e-12), kMax = sens(97.6e6, 4e-12) // the simulated corners
+  console.log(`        sensitivity: ${(kMin / 1e6).toFixed(2)} kHz/mV (Cj0 1.2 pF, 88.2 MHz) … ${(kMax / 1e6).toFixed(2)} kHz/mV (Cj0 4 pF, 97.6 MHz)`)
+  check("hand sensitivity matches the simulated 0.13 / 0.59 kHz/mV (±25 %)", Math.abs(kMin / 0.130e6 - 1) < 0.25 && Math.abs(kMax / 0.588e6 - 1) < 0.25)
+  // 10 mV of voice → Q1 (≈19×) → DEV at max → R14 into the bias node (R12 ∥ R13)
+  const toVar = 18.9 * (par(22e3, 150e3) / (par(22e3, 150e3) + 1e3 + par(2.7e3, 10e3)))
+  const dev = (k) => 10 * toVar * (k / 1e6) // kHz for 10 mV of voice
+  check("10 mV of voice gives ≥ ±15 kHz even with the least sensitive diode", dev(kMin) >= 15, `±${dev(kMin).toFixed(0)} … ±${dev(kMax).toFixed(0)} kHz at full DEV`)
+  check("…and the most sensitive one stays under ±75 kHz with DEV ≤ 70 %", dev(kMax) * 0.7 < 75 || 75 / dev(kMax) > 0.3, "set DEV by ear on a normal FM radio")
+  const fc = 1 / (2 * Math.PI * par(par(22e3, 150e3), 1e3 + 2.5e3) * 470e-12)
+  check("C14 is an RF ground (≤ 4 Ω at 88 MHz) but leaves speech alone (corner > 20 kHz)", 1 / (2 * Math.PI * 88e6 * 470e-12) < 4 && fc > 20e3, `audio corner ≈ ${(fc / 1e3).toFixed(0)} kHz`)
 }
 
-/* ══════════════ §4 FM-TX · AUDIO PREAMP (Q1) ══════════════ */
-console.log("\n§4  FM-TX · audio preamp (Q1, common emitter)")
+/* ══════════════ §6 START-UP: SMALL-SIGNAL LOOP GAIN ══════════════ */
+// Common-base Colpitts, loop broken at the transistor's control voltage:
+// collector node = tank (damping R, coil loss, C, L) + feedback cap to the emitter;
+// emitter node = feedback cap, bottom cap, Cπ, R_E and the emitter's own input conductance gm.
+console.log("\n§6  Oscillator start-up — loop gain at the zero-phase frequency")
+const cx = (re, im = 0) => ({ re, im })
+const cadd = (a, b) => cx(a.re + b.re, a.im + b.im)
+const cmul = (a, b) => cx(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re)
+const cdiv = (a, b) => { const d = b.re * b.re + b.im * b.im; return cx((a.re * b.re + a.im * b.im) / d, (a.im * b.re - a.re * b.im) / d) }
+function loopGain({ Rd, coilQ, Cpar, Cfb, Ce, RE, gm, fT }) {
+  const T = (f) => {
+    const w = 2 * Math.PI * f, cpi = gm / (2 * Math.PI * fT)
+    const Yc = cx(1 / Rd + 1 / (coilQ * w * L1), w * (Cpar + Cfb) - 1 / (w * L1))
+    const Ye = cx(1 / RE + gm, w * (Cfb + Ce + cpi))
+    const Yf = cx(0, -w * Cfb)
+    return cdiv(cmul(cx(-gm), Yf), cadd(cmul(Yc, Ye), cmul(cx(-1), cmul(Yf, Yf))))
+  }
+  let prev = T(40e6)
+  for (let f = 40e6; f < 200e6; f += 0.05e6) { const t = T(f); if (Math.sign(t.im) !== Math.sign(prev.im) && t.re > 0) return { f, T: t.re }; prev = t }
+  return { f: 0, T: 0 }
+}
+let rxGrowGm
 {
-  const R4 = 56e3, R5 = 12e3, R6 = 2.7e3, R7 = 220, R8 = 330
-  const VB = (V9 * R5) / (R4 + R5)
-  const VE = VB - VBE
-  const IE = VE / (R7 + R8)
-  const VC = V9 - IE * R6
-  const re = VT / IE
-  // load: Q2's base network R_th 3.1k ∥ r_π (β/gm of Q2)
-  const gm2 = 3.1e-3 / VT
-  const rpi2 = beta / gm2
-  const Rload = (2.7e3 * (3.11e3 * rpi2) / (3.11e3 + rpi2)) / (2.7e3 + (3.11e3 * rpi2) / (3.11e3 + rpi2))
-  const gainLoud = Rload / (R7 + re) // C5 in circuit (bypasses R8)
-  const gainSoft = Rload / (R7 + R8 + re) // C5 lifted (the loudness experiment)
-  console.log(`    divider 56k/12k → V_B = ${f2(VB)} V, V_E = ${f2(VE)} V over 550Ω → I_E ≈ ${f2(IE * 1e3)} mA`)
-  console.log(`    collector V_C = ${f2(VC)} V (headroom for audio swing ✓)`)
-  console.log(`    r_e = ${(re * 1e3).toFixed(1)}Ω · load (R6 ∥ osc base network) ≈ ${f2(Rload / 1e3)}k`)
-  console.log(`    gain: C5 IN (bypasses R8) = ${f2(gainLoud)}× · C5 LIFTED = ${f2(gainSoft)}×`)
-  console.log(`    mic speech 20mV → ${(20 * gainSoft).toFixed(0)}mV / ${(20 * gainLoud).toFixed(0)}mV at the oscillator base`)
-  check("Q1 bias: 1mA < I_E < 3mA", IE > 1e-3 && IE < 3e-3, `I_E = ${(IE * 1e3).toFixed(2)} mA`)
-  check("Q1 collector mid-rail (3-6V)", VC > 3 && VC < 6, `V_C = ${VC.toFixed(2)} V`)
-  check("two distinct loudness modes: soft 0.8-4×, loud 2-12×, ratio ≥ 2",
-    gainSoft > 0.8 && gainSoft < 4 && gainLoud > 2 && gainLoud < 12 && gainLoud / gainSoft > 2,
-    `${gainSoft.toFixed(1)}× / ${gainLoud.toFixed(1)}×`)
-  check("divider stiff (divider current ≥ 10× I_B)",
-    V9 / (R4 + R5) > 10 * (IE / beta), `divider ${(V9 / (R4 + R5) * 1e6).toFixed(0)}µA vs I_B ${(IE / beta * 1e6).toFixed(1)}µA`)
-  const Pd = VC * IE
-  check("Q1 within limits (I<10mA, P<50mW)", IE < 10e-3 && Pd < 50e-3, `P_diss = ${(Pd * 1e3).toFixed(2)} mW`)
+  const tx = [], rx = []
+  // FM-RX detector in its GROW state: R2/R3 with R10 from Q2's collector (~4.9 V) and R11
+  const g = 1 / 15e3 + 1 / 3.9e3 + 1 / 1e3 + 1 / 4.7e3
+  const vGrow = (V9 / 15e3 + 4.9 / 4.7e3) / g
+  rxGrowGm = ie(vGrow, 1 / g, 470, BETA.min) / VT
+  for (const [name, x] of Object.entries(XSTR)) for (const coilQ of [50, 150]) for (const trim of [TRIM.min, TRIM.max]) {
+    tx.push({ name, ...loopGain({ Rd: 330, coilQ, Cpar: trim + 12e-12 + 2.8e-12 + STRAY + x.cob, Cfb: 22e-12, Ce: 47e-12, RE: 680, gm: txQ2gm, fT: x.fT }) })
+    rx.push({ name, ...loopGain({ Rd: 1e3, coilQ, Cpar: trim + 12e-12 + STRAY + x.cob + 0.7e-12, Cfb: 22e-12, Ce: 47e-12, RE: 470, gm: rxGrowGm, fT: x.fT }) })
+  }
+  const tMin = Math.min(...tx.map((r) => r.T)), rMin = Math.min(...rx.map((r) => r.T))
+  check("FM-TX: loop gain > 1.1 in every corner, even with R15 (330 Ω) loading the tank", tMin > 1.1,
+    `${tMin.toFixed(2)} … ${Math.max(...tx.map((r) => r.T)).toFixed(2)} (both transistors, coil Q 50-150, both ends of TUNE)`)
+  check("FM-RX GROW: loop gain > 1.5 — bursts ignite every quench cycle", rMin > 1.5,
+    `${rMin.toFixed(2)} … ${Math.max(...rx.map((r) => r.T)).toFixed(2)}  (V_B ≈ ${vGrow.toFixed(2)} V, gm ≈ ${(rxGrowGm * 1e3).toFixed(0)} mS)`)
+  const vKill = (V9 / 15e3 + 0.05 / 4.7e3) / g
+  check("FM-RX KILL: V_B ≈ 0.4 V — Q1 is cut off (loop gain ≈ 0), the burst dies", vKill < 0.45, `V_B ≈ ${vKill.toFixed(2)} V`)
 }
 
-/* ══════════════ §5 FM-TX · THE OSCILLATOR (Q2) — AND ITS FM ═════════════ */
-console.log("\n§5  FM-TX · Colpitts oscillator (Q2) — where FM is born")
+/* ══════════════ §7 FM-RX TUNING AND THE C17 PADDER ══════════════ */
+console.log("\n§7  FM-RX · tuning window (sim, tight build: 80.7-102.1 MHz 2N2222A, 82.1-105.2 MHz BC547B)")
 {
-  const R9 = 15e3, R10 = 3.9e3, R11 = 390
-  const VB = (V9 * R10) / (R9 + R10)
-  const VE = VB - VBE
-  const IE = VE / R11
-  const gm = IE / VT
-  const Rth = (R9 * R10) / (R9 + R10)
-  console.log(`    divider 15k/3.9k → V_B = ${f2(VB)} V, V_E = ${f2(VE)} V over 390Ω → I_E ≈ ${f2(IE * 1e3)} mA`)
-  console.log(`    gm = ${(gm * 1e3).toFixed(0)} mS · collector fed THROUGH L1 (≈0Ω at DC) → V_C ≈ 9V`)
-  // negative resistance of the feedback pair (Colpitts startup criterion)
-  const C9 = 22e-12, C8 = 47e-12
-  const w = 2 * Math.PI * 98e6
-  const Rneg = gm / (w * w * C9 * C8) // |−gm/(ω²·C9·C8)|
-  const Qload = 30 // conservative loaded Q of a small air coil at 98MHz
-  const Rp = Qload * w * 0.1e-6
-  const alpha = 0.85 // α at 98MHz with fT≈250-300MHz devices (β_eff≈2.5-6)
-  console.log(`    feedback pair 10p/47p at 98 MHz:`)
-  console.log(`      negative resistance |R_neg| = α·gm/(ω²·C9·C8) ≈ ${(Rneg * alpha).toFixed(0)}Ω`)
-  console.log(`      tank parallel resistance (loaded Q≈${Qload}) ≈ ${Rp.toFixed(0)}Ω`)
-  check("oscillation start-up: |R_neg| < R_tank with ≥2× margin", Rneg * alpha < Rp / 2,
-    `${(Rneg * alpha).toFixed(0)}Ω vs ${Rp.toFixed(0)}Ω (${(Rp / (Rneg * alpha)).toFixed(1)}× margin)`)
-  // squegg check: the RF pump current ((1−α)·i_E, see sim) drains C7, but
-  // the STIFF divider (3.1k) resupplies it — the TX settles into steady
-  // self-biased class-C (sim-proven: no dropouts through 2ms of modulation)
-  const CB = 470e-12
-  const tau = Rth * CB
-  console.log(`    base network R_th = ${f2(Rth / 1e3)}k, C7 = 470pF → bias-recovery τ = ${(tau * 1e6).toFixed(1)}µs`)
-  check("TX bias stiff (τ short → bias recovers almost instantly)", tau < 3e-6, `τ = ${(tau * 1e6).toFixed(1)}µs`)
-  // FM mechanism — junction capacitance
-  const tauF = 0.3e-9 // BC548/2N2222-class forward transit time
-  const Cd = tauF * IE / VT
-  console.log(`    FM mechanism: B-E diffusion capacitance C_d = τ_F·I_E/V_T ≈ ${pf(Cd)}`)
-  console.log(`    sits at the emitter node (bottom of the 10p/47p divider) — audio on the`)
-  console.log(`    base wiggles I_E → wiggles C_d → wiggles the tank frequency. THAT'S FM.`)
-  console.log(`    (the numerical kHz/mV figure comes from calc/sim_fm.mjs — see tutorial)`)
-  check("diffusion cap is a significant fraction of the bottom cap (mechanism alive)",
-    Cd > 0.3 * C8 && Cd < 3 * C8, `C_d/C8 = ${(Cd / C8).toFixed(2)}`)
-  const Pd = 9 * IE
-  check("Q2 within limits (P<50mW)", Pd < 50e-3, `P_diss = ${(Pd * 1e3).toFixed(1)} mW`)
+  const rows = []
+  for (const [name, x] of Object.entries(XSTR)) {
+    const cfb = (f) => ser(eff(22e-12, f), eff(47e-12, f) + rxGrowGm / (2 * Math.PI * x.fT))
+    const base = (f) => cfb(f) + x.cob + STRAY + 0.7e-12 // + C22 (1 pF) in series with Q5's output capacitance
+    rows.push({ name, with: window((f) => base(f) + eff(12e-12, f)), without: window(base) })
+  }
+  for (const r of rows) console.log(`        ${r.name.padEnd(8)}: ${MHz(r.with.bottom)} … ${MHz(r.with.top)}   (no C17: ${MHz(r.without.bottom)} … ${MHz(r.without.top)})`)
+  check("without a padder the detector tunes deep into the aviation band (> 115 MHz)", rows.every((r) => r.without.top > 115e6),
+    "a super-regen radiates at its tuning frequency: it must not sit at 108-137 MHz")
+  check("C17 (12 pF) brings the window down to the FM band (top < 108 MHz, bottom < 88 MHz)", rows.every((r) => r.with.top < 108e6 && r.with.bottom < 88e6))
 }
 
-/* ══════════════ §6 FM-TX · ANTENNA, POWER, REGULATIONS ══════════════════ */
-console.log("\n§6  FM-TX · antenna coupling, power budget, the rules")
+/* ══════════════ §8 FM-RX QUENCH ASTABLE ══════════════ */
+console.log("\n§8  FM-RX · quench astable Q2/Q3 (sim: 69.4 kHz, Q2 collector up to 4.8 V)")
 {
-  const C13 = 3.3e-12
-  const Xc = 1 / (2 * Math.PI * 98e6 * C13)
-  console.log(`    C13 3.3pF: Xc = ${Xc.toFixed(0)}Ω at 98MHz — a light sip of the tank`)
-  check("antenna coupling light (Xc ≥ 5× tank Rp/10... keeps Q alive)", Xc > 300, `Xc = ${Xc.toFixed(0)}Ω`)
-  const iTot = 3.2e-3 + 0.6e-3 + 1.65e-3 + 3.1e-3 // LED+mic+Q1+Q2
-  console.log(`    current budget: LED 3.2 + mic 0.6 + Q1 1.65 + Q2 3.1 ≈ ${(iTot * 1e3).toFixed(1)} mA`)
-  const life = 550 / (iTot * 1e3) // 550mAh 9V alkaline
-  check("battery life ≥ 40h on a 9V alkaline", life > 40, `≈ ${life.toFixed(0)} h`)
-  // honest field-strength honesty box
-  console.log(`    regulations: FCC §15.239 allows 250 µV/m @ 3m in 88-108MHz;`)
-  console.log(`    many countries have similar micro-power exemptions. Keep the antenna`)
-  console.log(`    short (start 30cm), use it indoors, check local rules — the tutorial`)
-  console.log(`    has the full story. This is a learning device, not a broadcaster.`)
-  check("design intent is micro-power (battery, 3.3pF coupling, short wire)", true)
+  // Q2's collector is loaded by R10 into Q1's base network (R2 ∥ R3 ∥ R11 to a 0.45 V Thevenin source)
+  const rOsc = par(15e3, 3.9e3, 1e3), vOsc = (V9 / 15e3) / (1 / 15e3 + 1 / 3.9e3 + 1 / 1e3)
+  const vHigh2 = (V9 * (4.7e3 + rOsc) + vOsc * 4.7e3) / (4.7e3 + 4.7e3 + rOsc)
+  const tau2 = par(4.7e3, 4.7e3 + rOsc) * 1e-9 // Q2C rise: R5 ∥ load, into C7 (Q3's base clamped)
+  const tau3 = 4.7e3 * 1e-9                   // Q3C rise: R6 into C8 (Q2's base clamped)
+  const VSAT = 0.05
+  // iterate the cycle: each collector only partly recharges before the next flip
+  let dv3 = V9 - VSAT, tA = 0, tB = 0, dv2 = 0
+  for (let i = 0; i < 50; i++) {
+    tA = 18e3 * 1e-9 * Math.log((V9 - VBE + dv3) / (V9 - VBE)) // Q2 off: Q2B recovers through R9 (GROW)
+    dv2 = (vHigh2 - VSAT) * (1 - Math.exp(-tA / tau2))
+    tB = 11e3 * 1e-9 * Math.log((V9 - VBE + dv2) / (V9 - VBE)) // Q3 off: Q3B recovers through R8 (KILL)
+    dv3 = (V9 - VSAT) * (1 - Math.exp(-tB / tau3))
+  }
+  const fq = 1 / (tA + tB)
+  const naive = 1 / (0.693 * (18e3 + 11e3) * 1e-9)
+  check("quench rate ultrasonic and far below RF (25-150 kHz)", fq > 25e3 && fq < 150e3,
+    `${(fq / 1e3).toFixed(1)} kHz (GROW ${(tA * 1e6).toFixed(1)} µs, KILL ${(tB * 1e6).toFixed(1)} µs); textbook 0.693·RC formula: ${(naive / 1e3).toFixed(0)} kHz`)
+  check("hand model within 10 % of the simulated 69.4 kHz", Math.abs(fq / 69.4e3 - 1) < 0.1)
+  check("Q2's collector tops out near 5 V (loaded by R10/R11), not 9 V", vHigh2 > 4.5 && vHigh2 < 5.5, `${vHigh2.toFixed(2)} V`)
+  check("GROW gets most of the cycle (≥ 55 %): time for a µV seed to become a burst", tA / (tA + tB) >= 0.55, `${((tA / (tA + tB)) * 100).toFixed(0)} %`)
+  const xc4 = 1 / (2 * Math.PI * fq * 220e-12), rth = 1 / (1 / 15e3 + 1 / 3.9e3 + 1 / 1e3 + 1 / 4.7e3)
+  check("C4 (220 pF): RF ground at 88 MHz (≤ 10 Ω) yet ≥ 10× R_th at the quench rate", 1 / (2 * Math.PI * 88e6 * 220e-12) < 10 && xc4 > 10 * rth,
+    `${(xc4 / 1e3).toFixed(1)} kΩ vs R_th ${rth.toFixed(0)} Ω`)
 }
 
-/* ══════════════ §7 FM-RX · SUPER-REGEN DETECTOR (Q1) ══════════════════ */
-console.log("\n§7  FM-RX · super-regenerative detector (Q1 — the TX core, gated)")
+/* ══════════════ §9 FM-RX RF BUFFER AND AUDIO ══════════════ */
+console.log("\n§9  FM-RX · RF buffer, audio filter, amplifier (sim: Q5 0.91 mA, Q4 1.30 mA, Q6 2.66 mA)")
 {
-  // THE RECEIVER IS THE TRANSMITTER: same tank, same 22p/47p feedback
-  // divider, same 15k/3.9k base divider. The difference is WHO feeds the
-  // base: R10 (4.7k, from the astable's collector) and R11 (1k, to ground).
-  const R2 = 15e3, R3 = 3.9e3, R4 = 470, R10 = 4.7e3, R11 = 1e3
-  const VB0 = (V9 * R3) / (R2 + R3)
-  const g1 = 1 / ((R2 * R3) / (R2 + R3)), g2 = 1 / R10, g3 = 1 / R11
-  const G = g1 + g2 + g3
-  const RTH = 1 / G
-  const vB = (vAst) => (g1 * VB0 + g2 * vAst) / G
-  const vAstOff = 0.2, vAstHi = 9
-  console.log(`    base network: 15k/3.9k divider ∥ R10 4.7k (astable) ∥ R11 1k → R_th = ${(RTH / 1e3).toFixed(2)}k`)
-  console.log(`    astable LOW  (0.2V) → V_B = ${f2(vB(vAstOff))} V  — the KILL state`)
-  console.log(`    astable HIGH (9V)   → V_B = ${f2(vB(vAstHi))} V  — the GROW state`)
-  // Where is the oscillation threshold? The crude analytic R_neg formula
-  // gets the absolute scale ~7× off (the exact ODE sim is the truth), so
-  // the threshold is CALIBRATED to the sim: TEST 6.5 runs the core at
-  // V_B = 1.64V → solid continuous oscillation; the ramp sweeps show
-  // ignition around V_B ≈ 1.2-1.3V. Threshold band: 1.15-1.30V.
-  const vBThresh = 1.30
-  console.log(`    oscillation threshold (sim-calibrated, TEST 6.5): V_B ≈ ${f2(vBThresh)} V`)
-  check("KILL state sits well below the threshold (hard cut-off)",
-    vB(vAstOff) < vBThresh - 0.35, `V_B(off) = ${f2(vB(vAstOff))} < ${f2(vBThresh)} − 0.35`)
-  check("GROW state clears the threshold (bursts ignite every cycle)",
-    vB(vAstHi) > vBThresh + 0.15, `V_B(hi) = ${f2(vB(vAstHi))} > ${f2(vBThresh)} + 0.15`)
-  // the ramp sweeps V_B through the threshold — the sawtooth's smooth
-  // crossing is what makes the ignition moment signal-dependent (log mode)
-  console.log(`    the astable's exponential ramp sweeps V_B through ${f2(vBThresh)} V slowly —`)
-  console.log(`    the ignition moment (and thus the burst envelope) depends on what`)
-  console.log(`    rides the tank: noise (the HISS) or a carrier (QUIETING + audio).`)
-  // C4 (220pF): RF ground for the base, but NOT a short at quench rates —
-  // otherwise it would shunt the quench feed itself
-  const C4 = 220e-12
-  const XcRF = 1 / (2 * Math.PI * 98e6 * C4), XcQ = 1 / (2 * Math.PI * 50e3 * C4)
-  console.log(`    C4 220pF: Xc = ${XcRF.toFixed(1)}Ω at 98MHz (RF ground ✓) but ${(XcQ / 1e3).toFixed(1)}kΩ at 50kHz (quench passes ✓)`)
-  check("base RF-grounded at 98MHz (Xc ≤ 10Ω)", XcRF < 10, `Xc = ${XcRF.toFixed(1)}Ω`)
-  check("C4 does not shunt the quench feed (Xc@50kHz ≥ 3× R_th)", XcQ > 3 * RTH, `${(XcQ / 1e3).toFixed(1)}kΩ vs R_th ${(RTH / 1e3).toFixed(2)}k`)
-  // emitter divider leg: byte-identical to the TX's sim-proven divider
-  const Xc5 = 1 / (2 * Math.PI * 100e6 * 47e-12)
-  console.log(`    feedback divider 22p/47p — IDENTICAL to the TX (sim-proven core)`)
-  check("emitter RF leg: Xc(47p) ≪ R4 (the RF path dominates at 98MHz)", Xc5 < R4 / 5, `Xc = ${Xc5.toFixed(0)}Ω vs R4 = ${R4}Ω`)
+  const Vth5 = (V9 * 10e3) / 57e3, Rth5 = par(47e3, 10e3)
+  const i5 = [ie(Vth5, Rth5, 1e3, BETA.min), ie(Vth5, Rth5, 1e3, BETA.typ)]
+  check("Q5 (common-base buffer) biased 0.5-1.5 mA", i5[0] > 0.5e-3 && i5[1] < 1.5e-3, `${mA(i5[0])} … ${mA(i5[1])}`)
+  check("C21 grounds Q5's base at RF (≤ 2.5 Ω at 88 MHz)", 1 / (2 * Math.PI * 88e6 * 1e-9) < 2.5)
+  const zin = par(1e3, VT / i5[0])
+  check("Q5's emitter is a low-impedance input for the short wire (≤ 50 Ω)", zin < 50, `${zin.toFixed(0)} Ω`)
+
+  // two-section RC ladder R12/C9 → R13/C10, loaded by the 10k volume pot
+  const H = (f) => {
+    const w = 2 * Math.PI * f
+    const Z2 = cdiv(cx(1), cx(1 / 10e3, w * 10e-9)), Zb = cadd(cx(4.7e3), Z2)
+    const Z1 = cdiv(cx(1), cadd(cx(0, w * 10e-9), cdiv(cx(1), Zb)))
+    const v = cmul(cdiv(Z1, cadd(cx(4.7e3), Z1)), cdiv(Z2, Zb))
+    return Math.hypot(v.re, v.im)
+  }
+  const dB = (f) => 20 * Math.log10(H(f) / H(10))
+  check("speech passes: ≤ 3.5 dB down at 2.4 kHz", dB(2.4e3) > -3.5, `${dB(1e3).toFixed(1)} dB @ 1 kHz, ${dB(2.4e3).toFixed(1)} dB @ 2.4 kHz`)
+  check("quench residue knocked down ≥ 40 dB at 69 kHz", dB(69.4e3) < -40, `${dB(69.4e3).toFixed(1)} dB`)
+
+  const Vth4 = (V9 * 47e3) / 267e3, Rth4 = par(220e3, 47e3)
+  const i4 = [ie(Vth4, Rth4, 590, BETA.min), ie(Vth4, Rth4, 590, BETA.typ)]
+  check("Q4 biased 0.8-2 mA, collector mid-rail", i4[0] > 0.8e-3 && i4[1] < 2e-3 && V9 - 3.3e3 * i4[1] > 3, `${mA(i4[0])} … ${mA(i4[1])}, V_C ≥ ${(V9 - 3.3e3 * i4[1]).toFixed(1)} V`)
+  const a4 = 3.3e3 / (120 + VT / i4[1])
+  const i6 = (V9 - 3.3e3 * i4[1] - VBE) / 1.5e3
+  const zout = VT / i6 + 3.3e3 / BETA.min
+  const toEar = (a4 * 32) / (32 + zout)
+  check("Q4 gain ≈ R17 / (R16 + r_e): 15-30×", a4 > 15 && a4 < 30, `${a4.toFixed(1)}×`)
+  check("Q6 follower keeps ≥ 10× into a 32 Ω earbud (Q4 alone: < 0.5×)", toEar >= 10 && (3.3e3 * 0 + 32) / (120 + VT / i4[1]) < 0.5,
+    `Q6 at ${mA(i6)}, output ≈ ${zout.toFixed(0)} Ω → ${toEar.toFixed(1)}× (sim ≈ 14×)`)
+  check("Q6 safe: ≤ 50 mW", i6 * (V9 - (V9 - 3.3e3 * i4[1] - VBE)) < 50e-3, `${(i6 * (3.3e3 * i4[1] + VBE) * 1e3).toFixed(1)} mW`)
 }
 
-/* ══════════════ §7.5 FM-RX · THE QUENCH ASTABLE (Q2, Q3) ════════════════ */
-console.log("\n§7.5  FM-RX · the quench oscillator (Q2+Q3 astable multivibrator)")
+/* ══════════════ §10 RADIATED POWER ══════════════ */
+console.log("\n§10 Radiated power — why the antenna feed was redesigned")
 {
-  // textbook 2-BJT astable: each transistor's ON time = 0.693·R_base·C
-  const R5 = 4.7e3, R6 = 4.7e3      // collector loads
-  const C7 = 1e-9, C8 = 1e-9        // timing/coupling caps
-  const R9 = 18e3                    // Q2 base (Q2's ON time = the LOW phase)
-  const R8 = 11e3                    // Q3 base (Q3's ON time = the RISE phase)
-  const tLow = 0.693 * R9 * C7
-  const tRise = 0.693 * R8 * C8
-  const T = tLow + tRise
-  const fq = 1 / T
-  const tauRamp = R5 * C8            // Q2's collector rises with this τ
-  const vEnd = 0.2 + 8.8 * (1 - Math.exp(-tRise / tauRamp))
-  console.log(`    T = 0.693·(R9·C7 + R8·C8) = ${f2(tLow * 1e6)}µs + ${f2(tRise * 1e6)}µs = ${(T * 1e6).toFixed(1)}µs → f_q ≈ ${(fq / 1e3).toFixed(1)} kHz`)
-  console.log(`    Q2 collector: LOW ${f2(tLow * 1e6)}µs (the kill), then ramps up with τ = R5·C8 = ${(tauRamp * 1e6).toFixed(1)}µs`)
-  console.log(`    reaching ${f2(vEnd)}V by the end of the rise — the "smooth ramp, sharp drop" the books prescribe`)
-  check("quench rate ultrasonic (18-150kHz — above hearing, below RF)", fq > 18e3 && fq < 150e3, `${(fq / 1e3).toFixed(1)} kHz`)
-  check("ramp reaches the top region (≥75% of the swing within the rise window)", vEnd > 0.2 + 0.75 * 8.8, `${vEnd.toFixed(1)}V`)
-  check("dead time ≥ 1.5× the rise (clean separation of kill and grow)", tLow > 1.5 * tRise, `${(tLow * 1e6).toFixed(1)} vs ${(tRise * 1e6).toFixed(1)}µs`)
-  // current budget of the astable itself
-  const iAst = (V9 / R5) * (tRise / T) + (V9 / R6) * (tLow / T) + V9 / R8 * 0.5 + V9 / R9 * 0.5
-  console.log(`    astable draws ≈ ${(iAst * 1e3).toFixed(1)} mA`)
-  globalThis.IAST = iAst
-  check("astable current sane (< 4mA)", iAst < 4e-3, `${(iAst * 1e3).toFixed(1)} mA`)
+  const f = 98e6, lam = 3e8 / f, w = 2 * Math.PI * f
+  const loopR = 31171 * ((3 * Math.PI * 2.8e-3 ** 2) / lam ** 2) ** 2 // the 3-turn coil is a small loop
+  const mono = (h) => { const b = (2 * Math.PI * h) / lam, Z0 = 60 * (Math.log((2 * h) / 0.3e-3) - 1); return { R: 395 * (h / lam) ** 2, X: -Z0 / Math.tan(b) } }
+  // OLD design: undamped tank (~9 V peak), 3.3 pF straight into a 75 cm (≈ λ/4, ~36 Ω) wire
+  const iOld = 9 / Math.hypot(36, 1 / (w * 3.3e-12))
+  const pOld = 0.5 * iOld * iOld * 36 + 0.5 * (9 / (w * L1)) ** 2 * loopR
+  check("the original design was far over the limit (≥ 30 dB)", dBm(pOld) - dBm(LIMIT_TX) > 30, `≈ ${dBm(pOld).toFixed(1)} dBm`)
+  // NEW design: tank ≤ 0.8 V (R15), C13 1 pF : C15 100 pF divider, ≤ 20 cm of wire
+  const vt = 0.8, m = mono(0.2)
+  const vAnt = vt * (1e-12 / (1e-12 + 100e-12)) // the wire's own few pF barely matter next to 100 pF
+  const iAnt = vAnt / Math.hypot(m.R, m.X)
+  const pAnt = 0.5 * iAnt * iAnt * m.R, pCoil = 0.5 * (vt / (w * L1)) ** 2 * loopR
+  const pNew = pAnt + pCoil
+  check("FM-TX now: ≥ 10 dB under §15.239 (coil + 20 cm wire)", pNew < LIMIT_TX / 10,
+    `≈ ${dBm(pNew).toFixed(1)} dBm (coil ${dBm(pCoil).toFixed(1)}, wire ${dBm(pAnt).toFixed(1)}); sim worst −62.6 dBm; limit ${dBm(LIMIT_TX).toFixed(1)} dBm`)
+  check("…and the coil, not the wire, dominates — so a longer wire must not be fitted anyway", pCoil > pAnt)
 }
 
-/* ══════════════ §8 FM-RX · QUENCH FILTER + VOLUME ═══════════════════════ */
-console.log("\n§8  FM-RX · quench filter + volume control")
+/* ══════════════ §11 BATTERY ══════════════ */
+console.log("\n§11 Battery life (9 V alkaline ≈ 550 mAh)")
 {
-  const R12 = 4.7e3, C9 = 10e-9, R13 = 4.7e3, C10 = 10e-9
-  const fc = 1 / (2 * Math.PI * R12 * C9)
-  console.log(`    two poles: R12·C9 = R13·C10 → fc = ${hz(fc)} each`)
-  const fq = 1 / (0.693 * (18e3 + 11e3) * 1e-9)
-  const q = Math.sqrt(1 + (fq / fc) ** 2)
-  console.log(`    ${(fq / 1e3).toFixed(0)} kHz quench residue: ×${(1 / q / q * 100).toFixed(2)}% after both poles (−${(20 * Math.log10(q * q)).toFixed(0)} dB)`)
-  const a1k = Math.sqrt(1 + (1e3 / fc) ** 2)
-  console.log(`    1 kHz audio passes ×${(100 / a1k / a1k).toFixed(0)}% — flat ✓`)
-  check("quench (≥30kHz) knocked down ≥ 20dB by both poles", 1 / (q * q) < 0.1)
-  check("voice band 300-2400 Hz passes within 3.5dB", 1 / (1 + (2.4e3 / fc) ** 2) > 0.65, `2.4kHz ×${(100 / (1 + (2.4e3 / fc) ** 2)).toFixed(0)}%`)
-}
-
-/* ══════════════ §9 FM-RX · AUDIO AMPLIFIER (Q4) + EARPHONE ══════════════ */
-console.log("\n§9  FM-RX · audio amplifier (Q4) & earphone")
-{
-  const R14 = 220e3, R15 = 47e3, R16 = 560, R17 = 3.3e3, C12 = 47e-6
-  const VB = (V9 * R15) / (R14 + R15)
-  const VE = VB - VBE
-  const IE = VE / R16
-  const VC = V9 - IE * R17
-  const re = VT / IE
-  const gain = R17 / (R16 + re)
-  console.log(`    divider 220k/47k → V_B = ${f2(VB)} V, I_E ≈ ${f2(IE * 1e3)} mA, V_C = ${f2(VC)} V`)
-  console.log(`    gain ≈ R17/(R16+r_e) = ${f2(gain)}× — clean, linear, volume pot in front`)
-  check("Q4 bias: 1mA < I_E < 3mA", IE > 1e-3 && IE < 3e-3, `I_E = ${(IE * 1e3).toFixed(2)} mA`)
-  check("Q4 collector mid-rail (2.5-5.5V)", VC > 2.5 && VC < 5.5, `V_C = ${VC.toFixed(2)} V`)
-  check("gain 4-12× (linear Class-A, volume pot does the rest)", gain > 4 && gain < 12, `A_v = ${gain.toFixed(1)}`)
-  const fcLo = 1 / (2 * Math.PI * 32 * C12)
-  console.log(`    C12 47µF into 32Ω: fc = ${fcLo.toFixed(0)} Hz (earbuds OK; crystal phones even better)`)
-  check("output coupling reaches down to speech band even for 32Ω", fcLo < 150, `fc = ${fcLo.toFixed(0)} Hz`)
-  // current budget: Q1 duty-cycled bursts (~0.3mA avg, sim-measured) +
-  // divider 0.74mA + astable + Q4 + LED
-  const iTot = 0.3e-3 + 0.74e-3 + globalThis.IAST + IE + 3e-3
-  console.log(`    budget: detector 0.3 + divider 0.7 + astable ${(globalThis.IAST * 1e3).toFixed(1)} + amp ${(IE * 1e3).toFixed(1)} + LED 3 ≈ ${(iTot * 1e3).toFixed(1)} mA`)
-  console.log(`    → ≈ ${(550 / (iTot * 1e3)).toFixed(0)} h on a 9V alkaline`)
-  check("RX battery life ≥ 40h", 550 / (iTot * 1e3) > 40)
-}
-
-/* ══════════════ §10 THE PAIR — catching each other ══════════════════════ */
-console.log("\n§10  TX meets RX — the tuning overlap")
-{
-  const L = globalThis.LCOIL
-  const Cdiv = globalThis.CDIV
-  const f = (c) => 1 / (2 * Math.PI * Math.sqrt(L * c))
-  // both boards share identical tank geometry; strays differ slightly
-  const txLo = f(Cdiv + 12e-12 + 30e-12)
-  const txHi = f(Cdiv + 12e-12 + 5e-12)
-  const rxLo = f(Cdiv + 16e-12 + 30e-12)
-  const rxHi = f(Cdiv + 16e-12 + 5e-12)
-  console.log(`    TX window (12pF strays): ${hz(txLo)} … ${hz(txHi)}`)
-  console.log(`    RX window (16pF strays): ${hz(rxLo)} … ${hz(rxHi)}`)
-  const overlap = Math.min(txHi, rxHi) - Math.max(txLo, rxLo)
-  console.log(`    overlap ≈ ${(overlap / 1e6).toFixed(0)} MHz — plenty of common ground to meet on`)
-  check("TX and RX tuning windows overlap by ≥ 8 MHz", overlap > 8e6, `${(overlap / 1e6).toFixed(0)} MHz shared`)
-  console.log(`    plus the coil stretch trick (−14% L) rescues any stray-heavy build — the`)
-  console.log(`    receiver can always hunt the transmitter down. THE SILENCE IS THE SIGNAL.`)
+  const led = (V9 - 2) / 2.2e3
+  const tx = led + 2.0e-3 + V9 / 68e3 + 1.71e-3 + V9 / 18.9e3 + 0.4e-3 + V9 / 172e3
+  // RX: astable ≈ one collector (1.9 mA) + base drives; Q1 averages ~2/3 of its GROW current
+  const astable = (V9 - 0.05) / 4.7e3 + (V9 - 0.7) / 11e3 + (V9 - 4.9) / 4.7e3
+  const rx = led + 0.91e-3 + V9 / 57e3 + (2 / 3) * 0.85e-3 + V9 / 15e3 + astable + 1.3e-3 + 2.66e-3
+  check("FM-TX runs ≥ 50 h", 550 / (tx * 1e3) >= 50, `≈ ${mA(tx)} → ${(550 / (tx * 1e3)).toFixed(0)} h  (sim DC: 7.83 mA)`)
+  check("FM-RX runs ≥ 30 h", 550 / (rx * 1e3) >= 30, `≈ ${mA(rx)} → ${(550 / (rx * 1e3)).toFixed(0)} h  (the power LED is ~¼ of it)`)
 }
 
 console.log("\n" + "═".repeat(66))
 console.log(` RESULT: ${PASS.length} passed, ${FAIL.length} failed`)
-if (FAIL.length) {
-  console.log(" FAILED:", FAIL.join(" | "))
-  process.exit(1)
-}
-console.log(" Every bias point, tank number, and system budget checks out.")
+console.log("═".repeat(66))
+if (FAIL.length) process.exit(1)

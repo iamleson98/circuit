@@ -1,0 +1,61 @@
+
+.model FZT851 NPN(IS=1e-12 BF=250 NF=1 VAF=100 IKF=6 ISE=1e-13 NE=1.5 BR=20 NR=1 RB=2 RE=0.01 RC=0.035 CJE=400p VJE=0.75 MJE=0.33 CJC=100p VJC=0.75 MJC=0.33 TF=1.2n TR=50n)
+.model LOWB NPN(IS=1e-12 BF=80 NF=1 VAF=60 IKF=2 ISE=1e-13 NE=1.5 BR=10 RB=3 RE=0.02 RC=0.08 CJE=300p CJC=80p TF=2n TR=80n)
+.model BC847B NPN(IS=7e-14 BF=300 NF=1 VAF=80 IKF=0.1 ISE=1e-14 NE=1.5 BR=8 RB=10 RC=1 CJE=11p CJC=4p TF=0.5n TR=10n)
+.model SS14 D(IS=5e-6 N=1.05 RS=0.05 CJO=110p M=0.5 VJ=0.35 TT=5n)
+.model LEDR D(IS=1e-19 N=1.9 RS=8 CJO=15p)
+* Arc lighter driver — generated from the routed board by board_to_spice.mjs
+* J1: USB unplugged (firing is refused while it's plugged in)
+* U1: charger idle
+* C1: charger / indicator / pull-up, idle while firing
+C2 bat 0 0.0000047
+* R1: charger / indicator / pull-up, idle while firing
+* R2: charger / indicator / pull-up, idle while firing
+* LED1: charger / indicator / pull-up, idle while firing
+* R3: charger / indicator / pull-up, idle while firing
+* LED2: charger / indicator / pull-up, idle while firing
+VB bat_emf 0 3.7
+RBAT bat_emf bat 0.15  ; cell + protection MOSFETs
+RLOCK bat varm 0.02  ; LOCK switch closed
+RU2_SUPPLY vmcu 0 3.7k  ; ATtiny85 awake, ~1 mA
+R4 varm vmcu 10
+C4 vmcu 0 0.00001
+C3 vmcu 0 1e-7
+* R5: charger / indicator / pull-up, idle while firing
+* R7: charger / indicator / pull-up, idle while firing
+* R8: charger / indicator / pull-up, idle while firing
+* C5: charger / indicator / pull-up, idle while firing
+* R9: charger / indicator / pull-up, idle while firing
+* LED3: charger / indicator / pull-up, idle while firing
+* J2: ISP header, nothing connected
+SQ1 varm vdrv RON=0.06 ROFF=1e9  ; AO3401 at Vgs = −Vbat
+* R6: charger / indicator / pull-up, idle while firing
+C6 vdrv 0 0.000022
+C7 vdrv 0 0.000022
+C8 vdrv 0 0.000022
+Q2 col base emit FZT851
+R10 vdrv fba 47
+RE1 emit 0 0.51
+RE2 emit 0 0.51
+Q3 base n_q3_pin2 0 BC847B
+R11 emit n_q3_pin2 100
+D1 0 base SS14
+* D2: SMCJ33A — reverse breakdown ≈ 38 V, forward like a diode
+DD2R col d2_bv SS14
+VD2BV d2_bv d2_r 38
+RD2 d2_r 0 0.3
+DD2F 0 col SS14
+R12 col osc 100000
+R13 osc 0 33000
+LP vdrv lp_r 0.0001
+RLP lp_r col 0.23000000000000004
+LF fb_w fba 0.000025
+RLF fb_w base 0.5
+LS s1 s2r 0.0001
+RLS s2r s2 0.00375
+CS s1 s2 9.6e-7
+RHV s2 0 6250
+YGAP s1 s2 VBD=17.5 VARC=1 RON=0.00625 IHOLD=0.8
+K1 LP LF LS 0.97
+.tran 20n 4m
+.end
