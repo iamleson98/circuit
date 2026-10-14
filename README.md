@@ -19,7 +19,11 @@ explains the C code, the build files (`Makefile`, `.sh`, `platformio.ini`)
 and the whole toolchain (what API a microcontroller offers, how
 compilation and flashing work, what makes the chip execute the code) —
 and every file in the two `firmware/` folders now carries line-by-line
-comments written for a beginner.
+comments written for a beginner. And the fourth artifact — **running the
+circuits in SPICE before you build them** — is
+[`learn/11-simulation.md`](./learn/11-simulation.md) with the ready-to-run
+[`simulation/`](./simulation) lab (live graphs in your browser, all four
+analyses, real transistor models).
 
 ## Projects
 
@@ -31,6 +35,7 @@ comments written for a beginner.
 | [`tricolor-lamp/`](./tricolor-lamp) | **Tri-Color Lamp** — a 12 V LED lamp that steps blue → white → yellow each time you flip the wall switch, like store-bought "3-colour" ceiling lamps, without touching mains (a certified 12 V supply does that). An ATtiny85 controller that times power-offs on a 220 µF reservoir, measures the supply's sag with its ADC, remembers the colour in a wear-levelled EEPROM journal; a 60-LED panel. Proven by a 2-board audit, 47 worst-case math checks, 23 checks simulated on both routed boards joined by their cable, 33 firmware unit tests, the real firmware run against a model of the lamp in 15 switch scenarios, and 12/12 planted bugs caught. Explained from zero. | Beginner ★ |
 | [`arc-lighter/`](./arc-lighter) | **Arc Lighter** — a USB-rechargeable electric arc lighter: MCP73831 charger, LOCK switch, an ATtiny85 safety supervisor (hold-to-fire, 8 s limit, low-battery and coil-fault cut-offs), and a current-limited self-oscillating driver for a bought high-voltage coil. Proven by a board audit (hand-routed 0.8 mm current loop), 28 math checks, 14 checks simulated across 12 coil corners and 2 faults, and 28 firmware tests. **Makes ~10 kV — read its safety section first.** | Intermediate |
 | [`firmware-rust/`](./firmware-rust) | **The same two ATtiny85 firmwares, again, in Rust** — not transliterated: re-designed the way Rust wants it (typed registers via avr-device, hardware seams as traits, invalid states made unrepresentable), then held to the *C test suites themselves*: all 76 C checks replayed and passing (28 lighter + 33 lamp + 15 lamp-electronics scenarios), plus whole-lighter-firmware tests the C never had. Both flash images build for the chip (2746 / 3826 bytes vs the C's 1174 / 2056 — the honest trade-off). Start at [`firmware-rust/docs/C-vs-Rust.md`](./firmware-rust/docs/C-vs-Rust.md). | Intermediate |
+| [`simulation/`](./simulation) | **See them run** — seven of the repo's key analog stages as SPICE simulations: live waveform graphs in the browser (`tsci dev`), numeric tables in the terminal (`tsci simulate analog`), and committed PNG plots (`npm run all`). Covers all four analyses (transient / DC sweep / AC sweep / operating point) with real vendor models (ON Semi 2N3904, Vishay 1N4148) — the Colpitts carrier oscillator simulates at 714 kHz vs the 719 kHz design target. | Beginner ★ |
 
 All boards were reviewed in October 2026: every fix is listed in the
 project READMEs, and each tutorial PDF (which predates the review) has an
@@ -114,6 +119,24 @@ npm run test:firmware      # 28 firmware tests
 **Read `arc-lighter/README.md` — "Start here" and §1 Safety first.** It
 explains how a 3.7 V cell makes a 10 kV arc, every block of the board,
 the firmware's safety rules, parts, programming and a staged bring-up.
+
+## See the circuits run — simulation
+
+```bash
+cd simulation
+npm install -g tscircuit   # once — provides the `tsci` CLI
+npm install
+npm run dev:01             # any of 01…07 → browser: More views → Analog Simulation
+tsci simulate analog circuits/01-rc-lowpass.tsx   # or: table in the terminal
+npm run all                # headless: build → simulate → PNG plots in docs/plots/
+```
+
+Seven circuits cover every analog family in the repo (RC filters, the
+transistor switch, the lamp's PWM LED channel, the arc-lighter's boost
+principle, the receiver's LC tank, the detector diode, and the AM
+transmitter's Colpitts oscillator) across all four SPICE analyses — with
+committed plots, verified numbers, and the honest quirks documented in
+[`simulation/README.md`](./simulation/README.md).
 
 ## The firmware, again, in Rust
 

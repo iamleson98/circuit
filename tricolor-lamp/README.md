@@ -64,6 +64,10 @@ tricolor-lamp/
 │   └── mutation_test.py      ← plants 12 bugs, one at a time, and checks the tests catch each
 ├── calc/circuit_math.mjs     ← every design equation, worst case, asserted (47 checks)
 ├── calc/sim_lamp.mjs         ← circuit simulation of BOTH routed boards joined by the cable (23 checks)
+
+> To *see* one of the lamp's LED channels switch and PWM-dim as a live SPICE
+> waveform, open [`../simulation/circuits/03-led-pwm-channel.tsx`](../simulation/circuits/03-led-pwm-channel.tsx).
+
 ├── calc/spice.mjs            ← the circuit simulator itself
 ├── calc/board_to_spice.mjs   ← routed board → simulator netlist
 ├── calc/spice/lamp.cir       ← the generated netlist (its S lines are this simulator's simple switch)

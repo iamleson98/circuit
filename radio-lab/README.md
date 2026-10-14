@@ -53,6 +53,11 @@ Zero-install alternative: open <https://snippets.tscircuit.com> and paste in
 | Board audit | `npm run verify` | both boards: 0 DRC errors (every part has a courtyard), exact part lists (39 + 41), topology asserted on the netlist, vias ≥ 0.30/0.60 mm, traces ≥ 0.15 mm, plated-hole rings ≥ 0.18 mm |
 | Design math | `npm run math` | **22/22** |
 | Circuit simulation | `npm run build && npm run sim` (~2 min) | **17/17** |
+
+> These are custom physics checks. To *see* this project's key stages run as live
+> SPICE waveforms — the Colpitts carrier, the input tank, the detector — open
+> [`../simulation/`](../simulation) (`tsci dev` shows the graphs in your browser).
+
 | tscircuit CLI | `tsci build transmitter/index.tsx` / `receiver/index.tsx` | exit 0, both |
 
 `npm run sim` does not simulate a hand-copied schematic: it renders each

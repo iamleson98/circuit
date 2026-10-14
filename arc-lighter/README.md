@@ -199,6 +199,10 @@ npm run build          # compile the board (verify, sim and render import it)
 npm run verify         # board audit
 npm run math           # design equations
 npm run sim            # driver simulation (~1.5 min)
+
+> The flyback principle that charges the arc coil, slowed down and watchable as
+> a SPICE waveform: [`../simulation/circuits/04-boost-converter.tsx`](../simulation/circuits/04-boost-converter.tsx).
+
 npm run test:firmware  # firmware logic tests (needs any C compiler)
 ```
 

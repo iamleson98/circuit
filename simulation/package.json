@@ -1,0 +1,29 @@
+{
+  "name": "simulation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.build.json && node fix-imports.mjs",
+    "sim": "node tools/sim.mjs",
+    "plots": "python3 tools/plot.py",
+    "all": "npm run check && npm run build && npm run sim && npm run plots",
+    "dev:01": "tsci dev circuits/01-rc-lowpass.tsx",
+    "dev:02": "tsci dev circuits/02-transistor-switch.tsx",
+    "dev:03": "tsci dev circuits/03-led-pwm-channel.tsx",
+    "dev:04": "tsci dev circuits/04-boost-converter.tsx",
+    "dev:05": "tsci dev circuits/05-lc-tank-ac-sweep.tsx",
+    "dev:06": "tsci dev circuits/06-diode-iv-dc-sweep.tsx",
+    "dev:07": "tsci dev circuits/07-colpitts-oscillator.tsx"
+  },
+  "dependencies": {
+    "@tscircuit/core": "^0.0.2150",
+    "@tscircuit/props": "^0.0.702",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@tscircuit/ngspice-spice-engine": "^0.0.22",
+    "typescript": "^5.9.3"
+  }
+}
