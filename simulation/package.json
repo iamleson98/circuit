@@ -15,7 +15,10 @@
     "dev:04": "tsci dev circuits/04-boost-converter.tsx",
     "dev:05": "tsci dev circuits/05-lc-tank-ac-sweep.tsx",
     "dev:06": "tsci dev circuits/06-diode-iv-dc-sweep.tsx",
-    "dev:07": "tsci dev circuits/07-colpitts-oscillator.tsx"
+    "dev:07": "tsci dev circuits/07-colpitts-oscillator.tsx",
+    "harness": "node harness/run.mjs",
+    "harness:plots": "python3 harness/plot.py",
+    "harness:inspect": "node harness/tools/inspect-board.mjs"
   },
   "dependencies": {
     "@tscircuit/core": "^0.0.2150",

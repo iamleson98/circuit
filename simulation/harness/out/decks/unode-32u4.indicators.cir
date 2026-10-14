@@ -1,0 +1,115 @@
+
+* Standard vendor SPICE models (ON Semi / Fairchild 2N3904 & 2N2222A; NXP BC547B)
+.model Q2N3904 NPN(IS=6.734f BF=416.4 NE=1.259 ISE=6.734f IKF=66.78m BR=.7371 NC=2 RC=1 RB=10 VAF=74.03 CJC=3.638p MJC=.3085 VJC=.75 FC=.5 CJE=4.493p MJE=.2593 VJE=.75 TR=239.5n TF=301.2p)
+.model Q2N2222A NPN(IS=14.34f BF=255.9 NE=1.307 ISE=14.34f IKF=.2847 BR=6.092 NC=2 RC=1 RB=10 VAF=74.03 CJC=7.306p MJC=.3416 VJC=.75 FC=.5 CJE=22.01p MJE=.377 VJE=.75 TR=46.91n TF=411.1p)
+.model BC547B NPN(IS=2.39E-14 NF=1.008 ISE=3.545E-15 NE=1.541 BF=294.3 IKF=0.1357 VAF=63.2 NR=1.004 ISC=6.272E-14 NC=1.243 BR=7.946 IKR=0.1144 VAR=25.9 RB=1 RE=0.4683 RC=0.85 CJE=1.358E-11 VJE=0.65 MJE=0.3279 TF=4.391E-10 CJC=3.728E-12 VJC=0.3997 MJC=0.2955 TR=1E-9 FC=0.9579)
+.model D1N34A D(IS=1.3e-7 N=1.3 RS=7 CJO=0.6p VJ=0.3 M=0.4 TT=2n)
+.model D1N4148 D(IS=2.52n N=1.752 RS=0.568 CJO=4p M=0.4 VJ=0.75 TT=20n)
+.model LEDG D(IS=4.7e-20 N=2 RS=5 CJO=20p)
+
+* μNode32U4 — indicator LEDs — generated from the routed board by harness/tools/board_to_spice.mjs
+* J1: the USB port — VBUS source + port/cable resistance
+VJ1_VBUS vbus_src 0 5
+RJ1_PORT vbus_src n_f1_pin1 0.5
+* F1: 500 mA-hold PTC polyfuse, cold ≈ 0.3 Ω (thermal mass: µs inrush
+* pulses are over long before it could trip — that's the point)
+RF1 n_f1_pin1 v5 0.3
+R1 n_j1_dplus n_r1_pin2 22
+R2 n_j1_dminus n_r2_pin2 22
+* U1: ATmega32U4 — only the pieces the datasheet draws as blocks:
+RU1_CORE v5 0 250  ; digital core ≈ 20 mA @ 5 V, 16 MHz
+RU1_AVCC1 avcc1 0 3k  ; analog section ≈ 1.7 mA per rail
+RU1_AVCC2 avcc2 0 3k
+* internal 3.3 V regulator for USB (UCAP pin, datasheet §2.2.6):
+EU1_3V3 u1_3v3 0 v5 0 0.66
+RU1_3V3 u1_3v3 n_c7_pin1 2
+* the oscillator pins' network (§6.3): the chip biases XTAL1/XTAL2 at
+* mid-rail through its internal feedback and output structures, with
+* ESD clamps bounding them to the rails. The ACTIVE part — the
+* transconductance that cancels the crystal's 142 Ω of loss every
+* cycle and sustains oscillation — lives inside the chip; designers
+* verify it with the negative-resistance method (see crystal-ring):
+* any stage that presents more than −Rm at the pins keeps the ring
+* alive forever.
+RMID_A v5 u1_mid 100k
+RMID_B u1_mid 0 100k
+RU1RF xtal1 xtal2 10meg
+RU1RO xtal2 u1_mid 20k
+DU1CLH xtal2 v5 D1N4148
+DU1CLL 0 xtal2 D1N4148
+* the pins' ESD/protection structures give otherwise-floating analog
+* nodes (D+, D−, AREF) a weak DC reference, like the real chip does:
+RU1_BLE_DP n_r1_pin2 0 10meg
+RU1_BLE_DM n_r2_pin2 0 10meg
+RU1_BLE_AREF aref 0 10meg
+EU1_PC7 u1_pc7 0 v5 0 1
+RU1_PC7 u1_pc7 d13 25  ; pin HIGH, ≈25 Ω output driver
+VU1_PD5 u1_pd5 0 0
+RU1_PD5 u1_pd5 n_r7_pin2 25  ; pin LOW (sinks), ≈25 Ω output driver
+VU1_PB0 u1_pb0 0 0
+RU1_PB0 u1_pb0 ss 25  ; pin LOW (sinks), ≈25 Ω output driver
+RC1_ESR v5 c1_c 0.15
+LC1_ESL c1_c c1_l 1.5e-9
+CC1 c1_l 0 0.0000047
+RC2_ESR v5 c2_c 0.2
+LC2_ESL c2_c c2_l 1.2e-9
+CC2 c2_l 0 0.000001
+RC3_ESR v5 c3_c 0.05
+LC3_ESL c3_c c3_l 8e-10
+CC3 c3_l 0 1e-7
+RC4_ESR avcc1 c4_c 0.05
+LC4_ESL c4_c c4_l 8e-10
+CC4 c4_l 0 1e-7
+* FB2: 0603 ferrite bead (BLM18PG221-class): 0.05 Ω DCR, ~1 µH ∥ 330 Ω
+RFB2_DCR v5 fb2_x 0.05
+LFB2 fb2_x avcc1 1u
+RFB2_LOSS fb2_x avcc1 330
+RC5_ESR v5 c5_c 0.05
+LC5_ESL c5_c c5_l 8e-10
+CC5 c5_l 0 1e-7
+RC6_ESR avcc2 c6_c 0.05
+LC6_ESL c6_c c6_l 8e-10
+CC6 c6_l 0 1e-7
+RC7_ESR n_c7_pin1 c7_c 0.15
+LC7_ESL c7_c c7_l 1.5e-9
+CC7 c7_l 0 0.000001
+RC8_ESR v5 c8_c 0.05
+LC8_ESL c8_c c8_l 8e-10
+CC8 c8_l 0 1e-7
+RC9_ESR aref c9_c 0.05
+LC9_ESL c9_c c9_l 8e-10
+CC9 c9_l 0 1e-7
+* FB1: 0603 ferrite bead (BLM18PG221-class): 0.05 Ω DCR, ~1 µH ∥ 330 Ω
+RFB1_DCR v5 fb1_x 0.05
+LFB1 fb1_x avcc2 1u
+RFB1_LOSS fb1_x avcc2 330
+* Y1: 16 MHz crystal — the motional arm (R-L-C in series) that resonates,
+* plus the case capacitance across it. f_series ≈ 15.997 MHz; the load
+* caps pull it up to 16.000 MHz. Q ≈ 10 k.
+RY1M xtal2 y1_m 142
+LY1M y1_m y1_k 14.14m
+CY1M y1_k xtal1 7f
+CY1S xtal2 xtal1 3.5p
+RC10_ESR xtal1 c10_c 0.05
+LC10_ESL c10_c c10_l 8e-10
+CC10 c10_l 0 2.2e-11
+RC11_ESR xtal2 c11_c 0.05
+LC11_ESL c11_c c11_l 8e-10
+CC11 c11_l 0 2.2e-11
+R3 v5 rst 10000
+* SW1: RESET button — not pressed
+R4 v5 hwb 10000
+* SW2: HWB button — not pressed
+* J3: ICSP header — nothing plugged in
+DLED1 v5 n_led1_pin2 LEDG
+R5 n_led1_pin2 0 1000
+DLED2 n_led2_pin1 0 LEDG
+R6 d13 n_led2_pin1 1000
+DLED3 v5 n_led3_pin2 LEDG
+R7 n_led3_pin2 n_r7_pin2 1000
+DLED4 v5 n_led4_pin2 LEDG
+R8 n_led4_pin2 ss 1000
+R9 v5 sda 4700
+R10 v5 scl 4700
+* J2: GPIO header — nothing plugged in
+* J4: analog/GPIO header — nothing plugged in

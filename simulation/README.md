@@ -17,6 +17,18 @@ npm run all            # typecheck → build → simulate → plot
 The plots are committed: [`docs/plots/`](docs/plots/) — you can read them
 without running anything.
 
+> ### …and the harness: the REAL boards, simulated
+> The seven circuits above are stand-ins that teach the stages. When you want
+> **the actual boards** — every `index.tsx` in the repo netlisted and simulated
+> from its routed source, with physics checks against the design's own numbers —
+> that's [`harness/`](./harness/README.md):
+> ```
+> npm run harness        # all five projects' boards (≈ 10 min)
+> npm run harness:plots  # → harness/out/plots/*.png
+> ```
+> μNode32U4's USB hot-plug inrush and 16 MHz crystal, the arc lighter firing,
+> AM voice modulation, the FM super-regen, the lamp's PWM — all verified.
+
 ---
 
 ## The three ways to run a simulation

@@ -33,7 +33,7 @@ PDFs explain *how to build and verify* each project; this course explains
 | 8 | [`08-tour-tricolor-lamp.md`](./08-tour-tricolor-lamp.md) | Guided tour of the **Tri-Color Lamp** — a lamp that changes colour when you flip the wall switch, and the two boards that make it work. |
 | 9 | [`09-tour-arc-lighter.md`](./09-tour-arc-lighter.md) | Guided tour of the **Arc Lighter** — how 3.7 V becomes a spark, with safety layers explained. |
 | 10 | [`10-firmware-literacy.md`](./10-firmware-literacy.md) | **The brain**: how the C programs control the chips — the register "API", the library (avr-libc), what each module exposes and why, what `Makefile`/`.sh` do to the sources, how compilation and flashing work, and what makes the chip *execute* the code. Every firmware file in the repo now carries line-by-line novice comments. |
-| 11 | [`11-simulation.md`](./11-simulation.md) | **Run before you build**: SPICE simulation of these very circuits — the four kinds of analysis, probes as scope leads, the seven ready-to-run circuits in `simulation/`, real vendor model cards, and what a simulator will and won't tell you. |
+| 11 | [`11-simulation.md`](./11-simulation.md) | **Run before you build**: SPICE simulation of these very circuits — the four kinds of analysis, probes as scope leads, the seven ready-to-run circuits in `simulation/`, the repo's real boards via `simulation/harness/`, real vendor model cards, and what a simulator will and won't tell you. |
 
 **Recommended order:** 1 → 2 → 3 → 4, then any tour that matches a board you
 are curious about. Tours 5–9 are self-contained; each one begins with a

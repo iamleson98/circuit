@@ -1,0 +1,62 @@
+
+* Standard vendor SPICE models (ON Semi / Fairchild 2N3904 & 2N2222A; NXP BC547B)
+.model Q2N3904 NPN(IS=6.734f BF=416.4 NE=1.259 ISE=6.734f IKF=66.78m BR=.7371 NC=2 RC=1 RB=10 VAF=74.03 CJC=3.638p MJC=.3085 VJC=.75 FC=.5 CJE=4.493p MJE=.2593 VJE=.75 TR=239.5n TF=301.2p)
+.model Q2N2222A NPN(IS=14.34f BF=255.9 NE=1.307 ISE=14.34f IKF=.2847 BR=6.092 NC=2 RC=1 RB=10 VAF=74.03 CJC=7.306p MJC=.3416 VJC=.75 FC=.5 CJE=22.01p MJE=.377 VJE=.75 TR=46.91n TF=411.1p)
+.model BC547B NPN(IS=2.39E-14 NF=1.008 ISE=3.545E-15 NE=1.541 BF=294.3 IKF=0.1357 VAF=63.2 NR=1.004 ISC=6.272E-14 NC=1.243 BR=7.946 IKR=0.1144 VAR=25.9 RB=1 RE=0.4683 RC=0.85 CJE=1.358E-11 VJE=0.65 MJE=0.3279 TF=4.391E-10 CJC=3.728E-12 VJC=0.3997 MJC=0.2955 TR=1E-9 FC=0.9579)
+.model D1N34A D(IS=1.3e-7 N=1.3 RS=7 CJO=0.6p VJ=0.3 M=0.4 TT=2n)
+.model D1N4148 D(IS=2.52n N=1.752 RS=0.568 CJO=4p M=0.4 VJ=0.75 TT=20n)
+.model LEDG D(IS=4.7e-20 N=2 RS=5 CJO=20p)
+
+.model D1N4148HI D(IS=2.52n N=1.752 RS=0.568 CJO=4p M=0.4 VJ=0.75 TT=20n)
+.model D1N4148LO D(IS=2.52n N=1.752 RS=0.568 CJO=1.2p M=0.4 VJ=0.75 TT=20n)* FM Radio Lab FM-TX — modulation characteristic — generated from the routed board by harness/tools/board_to_spice.mjs
+VBT1 bt1_emf 0 9
+RBT1_INT bt1_emf v9 1.5
+C1 v9 0 0.000047
+C2 v9 0 1e-7
+DLED1 n_led1_pin1 0 LEDG
+R1 v9 n_led1_pin1 2200
+IMIC1 n_c3_pin1 0 0.3m  ; quiet studio (the DC bias only)
+R2 v9 n_c3_pin1 10000
+C3 n_c3_pin1 n_c3_pin2 1e-7
+RAUX1_OPEN n_aux1_tip 0 1meg  ; nothing plugged in
+C4 n_aux1_tip n_c4_pin2 1e-7
+R3 n_c4_pin2 n_c3_pin2 47000
+Q1 n_c6_pin1 n_c3_pin2 n_q1_pin3 BC547B
+R4 v9 n_c3_pin2 56000
+R5 n_c3_pin2 0 12000
+R6 v9 n_c6_pin1 2700
+R7 n_q1_pin3 n_c5_pin1 100
+R8 n_c5_pin1 0 330
+C5 n_c5_pin1 0 0.00001
+Q2 tank oscb n_c8_pin1 Q2N2222A
+R9 v9 oscb 15000
+R10 oscb 0 3900
+C7 oscb 0 4.7e-10
+R11 n_c8_pin1 0 680
+C8 n_c8_pin1 0 4.7e-11
+C9 tank n_c8_pin1 2.2e-11
+C6 n_c6_pin1 n_c6_pin2 1e-7
+RV1_A n_c6_pin2 n_r14_pin1 5000
+RV1_B n_r14_pin1 0 5000
+R14 n_r14_pin1 n_c16_pin1 1000
+C16 n_c16_pin1 var 1e-7
+R12 v9 var 22000
+R13 var 0 150000
+C14 var 0 4.7e-10
+D1 var tank D1N4148HI
+L1 tank l1_s 6.000000000000001e-8
+RL1_LOSS l1_s v9 0.3695
+CTRIM1 tank 0 15p
+C11 v9 0 1e-7
+C12 v9 0 1e-9
+R15 tank v9 330
+C17 tank 0 1.2e-11
+C13 tank antx 1e-12
+C15 antx 0 1e-10
+CANT1_WIRE antx ant1_w 1.901459866350234e-12
+RANT1_RAD ant1_w 0 1.686035555555556
+RANT1_LEAK antx 0 1meg
+CPAR_TANK tank 0 2p
+IKICK 0 tank PULSE(0 2m 0 0.2n 0.2n 1n 1)
+.tran 0.05n 4u  ; (one run per audio level)
+.end

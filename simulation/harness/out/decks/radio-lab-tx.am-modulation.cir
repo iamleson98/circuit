@@ -1,0 +1,56 @@
+
+* Standard vendor SPICE models (ON Semi / Fairchild 2N3904 & 2N2222A; NXP BC547B)
+.model Q2N3904 NPN(IS=6.734f BF=416.4 NE=1.259 ISE=6.734f IKF=66.78m BR=.7371 NC=2 RC=1 RB=10 VAF=74.03 CJC=3.638p MJC=.3085 VJC=.75 FC=.5 CJE=4.493p MJE=.2593 VJE=.75 TR=239.5n TF=301.2p)
+.model Q2N2222A NPN(IS=14.34f BF=255.9 NE=1.307 ISE=14.34f IKF=.2847 BR=6.092 NC=2 RC=1 RB=10 VAF=74.03 CJC=7.306p MJC=.3416 VJC=.75 FC=.5 CJE=22.01p MJE=.377 VJE=.75 TR=46.91n TF=411.1p)
+.model BC547B NPN(IS=2.39E-14 NF=1.008 ISE=3.545E-15 NE=1.541 BF=294.3 IKF=0.1357 VAF=63.2 NR=1.004 ISC=6.272E-14 NC=1.243 BR=7.946 IKR=0.1144 VAR=25.9 RB=1 RE=0.4683 RC=0.85 CJE=1.358E-11 VJE=0.65 MJE=0.3279 TF=4.391E-10 CJC=3.728E-12 VJC=0.3997 MJC=0.2955 TR=1E-9 FC=0.9579)
+.model D1N34A D(IS=1.3e-7 N=1.3 RS=7 CJO=0.6p VJ=0.3 M=0.4 TT=2n)
+.model D1N4148 D(IS=2.52n N=1.752 RS=0.568 CJO=4p M=0.4 VJ=0.75 TT=20n)
+.model LEDG D(IS=4.7e-20 N=2 RS=5 CJO=20p)
+* Radio Lab AM-TX — modulating — generated from the routed board by harness/tools/board_to_spice.mjs
+VBT1 bt1_emf 0 9
+RBT1_INT bt1_emf v9 1.5
+C1 v9 0 0.0001
+C2 v9 0 1e-7
+DLED1 n_led1_pin1 0 LEDG
+R1 v9 n_led1_pin1 2200
+IMIC1 n_c3_pin1 0 SIN(0.3m 0.000009090909090909091 1k)
+R2 v9 n_c3_pin1 2200
+C3 n_c3_pin1 n_c3_pin2 0.000001
+Q1 n_c5_pin1 n_c3_pin2 n_c4_pin1 BC547B
+R3 v9 n_c3_pin2 68000
+R4 n_c3_pin2 0 10000
+R5 v9 n_c5_pin1 4700
+R6 n_c4_pin1 0 560
+C4 n_c4_pin1 0 0.0001
+Q2 v9 n_c5_pin2 vmd BC547B
+R7 v9 n_c5_pin2 10000
+R8 n_c5_pin2 0 15000
+C5 n_c5_pin1 n_c5_pin2 0.000001
+C19 vmd 0 1e-7
+Q3 tank n_c6_pin1 n_c14_pin1 BC547B
+R10 v9 n_c6_pin1 56000
+R11 n_c6_pin1 0 10000
+R12 n_c14_pin1 0 1000
+C6 n_c6_pin1 0 2.2e-9
+C14 n_c14_pin1 tank 6.8e-10
+C15 n_c14_pin1 0 6.8e-10
+L1 tank l1_s 0.00009999999999999999
+RL1_LOSS l1_s v9 12.57
+CCV1 tank 0 100p
+Q4 rf_out n_c17_pin2 n_q4_pin3 BC547B
+R14 v9 n_c17_pin2 27000
+R15 n_c17_pin2 0 10000
+R16 n_q4_pin3 0 1000
+C17 tank n_c17_pin2 1e-10
+L2 rf_out l2_s 0.00009999999999999999
+RL2_LOSS l2_s vmd 12.57
+C18 rf_out 0 3.3e-10
+CCV2 rf_out 0 60p
+C16 rf_out n_ant1_ant 4.7e-11
+CANT1_WIRE n_ant1_ant 0 15p
+RANT1_LEAK n_ant1_ant 0 1meg
+CPAR_TANK tank 0 5p
+CPAR_OUT rf_out 0 3p
+IKICK 0 tank PULSE(0 10u 0 10n 10n 200n 1)
+.tran 10n 3.6m
+.end

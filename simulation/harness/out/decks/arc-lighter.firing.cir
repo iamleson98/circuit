@@ -1,0 +1,71 @@
+
+* Standard vendor SPICE models (ON Semi / Fairchild 2N3904 & 2N2222A; NXP BC547B)
+.model Q2N3904 NPN(IS=6.734f BF=416.4 NE=1.259 ISE=6.734f IKF=66.78m BR=.7371 NC=2 RC=1 RB=10 VAF=74.03 CJC=3.638p MJC=.3085 VJC=.75 FC=.5 CJE=4.493p MJE=.2593 VJE=.75 TR=239.5n TF=301.2p)
+.model Q2N2222A NPN(IS=14.34f BF=255.9 NE=1.307 ISE=14.34f IKF=.2847 BR=6.092 NC=2 RC=1 RB=10 VAF=74.03 CJC=7.306p MJC=.3416 VJC=.75 FC=.5 CJE=22.01p MJE=.377 VJE=.75 TR=46.91n TF=411.1p)
+.model BC547B NPN(IS=2.39E-14 NF=1.008 ISE=3.545E-15 NE=1.541 BF=294.3 IKF=0.1357 VAF=63.2 NR=1.004 ISC=6.272E-14 NC=1.243 BR=7.946 IKR=0.1144 VAR=25.9 RB=1 RE=0.4683 RC=0.85 CJE=1.358E-11 VJE=0.65 MJE=0.3279 TF=4.391E-10 CJC=3.728E-12 VJC=0.3997 MJC=0.2955 TR=1E-9 FC=0.9579)
+.model D1N34A D(IS=1.3e-7 N=1.3 RS=7 CJO=0.6p VJ=0.3 M=0.4 TT=2n)
+.model D1N4148 D(IS=2.52n N=1.752 RS=0.568 CJO=4p M=0.4 VJ=0.75 TT=20n)
+.model LEDG D(IS=4.7e-20 N=2 RS=5 CJO=20p)
+
+* vendor-style models (fitted to datasheets, as in arc-lighter/calc):
+.model FZT851 NPN(IS=1e-12 BF=250 NF=1 VAF=100 IKF=6 ISE=1e-13 NE=1.5 BR=20 NR=1 RB=2 RE=0.01 RC=0.035 CJE=400p VJE=0.75 MJE=0.33 CJC=100p VJC=0.75 MJC=0.33 TF=1.2n TR=50n)
+.model BC847B NPN(IS=7e-14 BF=300 NF=1 VAF=80 IKF=0.1 ISE=1e-14 NE=1.5 BR=8 RB=10 RC=1 CJE=11p CJC=4p TF=0.5n TR=10n)
+.model SS14 D(IS=5e-6 N=1.05 RS=0.05 CJO=110p M=0.5 VJ=0.35 TT=5n)
+.model LEDR D(IS=1e-19 N=1.9 RS=8 CJO=15p)
+* Arc lighter — firing (nominal coil, 3.7 V cell) — generated from the routed board by harness/tools/board_to_spice.mjs
+* J1: USB unplugged (firing is refused while plugged in)
+* U1: charger idle
+C1 vbus 0 0.0000047
+C2 bat 0 0.0000047
+R1 n_r1_pin1 0 4700
+R2 vbus n_led1_pin1 1000
+DLED1 n_led1_pin1 stat LEDR
+R3 stat n_led2_pin1 1000
+DLED2 n_led2_pin1 0 LEDR
+VB bat_emf 0 3.7
+RBAT bat_emf bat 0.15  ; cell + protection MOSFETs
+RLOCK bat varm 0.02  ; the LOCK slide switch, closed (armed)
+RU2_SUPPLY vmcu 0 3.7k  ; ATtiny85 awake, ~1 mA
+R4 varm vmcu 10
+C4 vmcu 0 0.00001
+C3 vmcu 0 1e-7
+R5 vmcu rst 10000
+R7 vbus vbs 1000000
+R8 vbs 0 2200000
+C5 vbs 0 1e-7
+R9 leds n_led3_pin1 1000
+DLED3 n_led3_pin1 0 LEDR
+* J2: ISP header, nothing connected
+SQ1 varm vdrv RON=0.06 ROFF=1e9  ; AO3401 P-FET, gate pulled low by PB4
+R6 varm gate 100000
+C6 vdrv 0 0.000022
+C7 vdrv 0 0.000022
+C8 vdrv 0 0.000022
+Q2 col base emit FZT851
+R10 vdrv fba 47
+RE1 emit 0 0.51
+RE2 emit 0 0.51
+Q3 base n_q3_pin2 0 BC847B
+R11 emit n_q3_pin2 100
+D1 0 base SS14
+* D2: SMCJ33A TVS — reverse breakdown ≈ 38 V, forward a diode
+DD2R col d2_bv SS14
+VD2BV d2_bv d2_r 38
+RD2 d2_r 0 0.3
+DD2F 0 col SS14
+R12 col osc 100000
+R13 osc 0 33000
+* the coil at its pads: primary, feedback, HV secondary referred 1:1 to the
+* primary side (keeps the matrix conditioned), and the spark gap:
+LP vdrv lp_r 100u
+RLP lp_r col 0.23000000000000004
+LF fb_w fba 0.000025
+RLF fb_w base 0.5
+LS s1 s2r 100u
+RLS s2r s2 0.00375
+CS s1 s2 9.6e-7
+RHV s2 0 6250
+YGAP s1 s2 VBD=17.5 VARC=1 RON=0.00625 IHOLD=0.8
+K1 LP LF LS 0.97
+.tran 20n 1.2m
+.end
